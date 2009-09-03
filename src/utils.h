@@ -1,60 +1,129 @@
-
 /*
- * Copyright (C) Texas Instruments - http://www.ti.com/
+ * utils.h
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * Utility definitions for the Memory Interface for TI OMAP processors.
  *
+ * Copyright (C) 2008-2010 Texas Instruments, Inc.
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * This package is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- */
-/* ====================================================================
-*             Texas Instruments OMAP(TM) Platform Software
-* (c) Copyright Texas Instruments, Incorporated. All Rights Reserved.
-*
-* Use of this software is controlled by the terms and conditions found
-* in the license agreement under which this software has been supplied.
-* ==================================================================== */
-
-/** OMX_TI_Common.h
- *  The LCML header file contains the definitions used by both the
- *  application and the component to access common items.
+ * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#ifndef __OMX_TI_COMMON_H__
-#define __OMX_TI_COMMON_H__
+#ifndef _UTILS_H_
+#define _UTILS_H_
 
-/* OMX_TI_SEVERITYTYPE enumeration is used to indicate severity level of errors returned by TI OpenMax components. 
-   Critcal	Requires reboot/reset DSP
-   Severe	Have to unload components and free memory and try again
-   Major	Can be handled without unloading the component
-   Minor	Essentially informational 
-*/
-typedef enum OMX_TI_SEVERITYTYPE {
-    OMX_TI_ErrorCritical=1,
-    OMX_TI_ErrorSevere,
-    OMX_TI_ErrorMajor,
-    OMX_TI_ErrorMinor
-} OMX_TI_SEVERITYTYPE;
+/* ---------- Generic Macros Used in Macros ---------- */
 
-/* Round integer (i) up to a power-of 2 (n2n) */
-#define ROUNDUP2N(i, n2n) (((i) + (n2n) - 1) & ~ ((n2n) - 1))
-/* Round integer (i) up to (bits) power-of 2 */
-#define ROUNDUP2NB(i, bits) ROUNDUP2N(i, 1 << (bits))
-/* Count how many (n)-s does it take to reach or surpass integer (i) */
-#define COUNTUPN(i, n) (((i) + (n) - 1) / (n))
-/* Count how many (bits) power-of 2-s does it take to reach or surpass integer (i) */
-#define COUNTUP2NB(i, bits) (((i) + (1 << (bits)) - 1) >> (bits))
+/* statement begin */
+#define S_ do
+/* statement end */
+#define _S while (0)
+/* expression begin */
+#define E_ (
+/* expression end */
+#define _E )
+
+/* ---------- Generic Debug Print Macros ---------- */
+
+/**
+ * Use as: 
+ *    P("val is %d", 5);
+ *    ==> val is 5
+ *    DP("val is %d", 15);
+ *    ==> val is 5 at test.c:56:main()
+ */
+/* debug print (fmt must be a literal); adds new-line. */
+#define P(fmt, ...) S_ { fprintf(stdout, fmt "\n", __VA_ARGS__); fflush(stdout); } _S
+/* debug print with context information (fmt must be a literal) */
+#define DP(fmt, ...) P(fmt " at (" __FILE__ ":%d:%s())", __VA_ARGS__, __LINE__, __FUNCTION__)
+
+/* ---------- Program Flow Debug Macros ---------- */
+
+/**
+ * Use as: 
+ *    int get5() {
+ *      IN;
+ *      return R_I(5);
+ *    }
+ *    void check(int i) {
+ *      IN;
+ *      if (i == 5) { RET; return; }
+ *      OUT;
+ *    }
+ *    void main() {
+ *      IN;
+ *      check(get5());
+ *      check(2);
+ *      OUT;
+ *    }
+ *    ==>
+ *    in test.c:main()
+ *    in test.c:get5()
+ *    out(5) at test.c:3:get5()
+ *    in test.c:check()
+ *    out() at test.c:7:check()
+ *    in test.c:check()
+ *    out test.c:check()
+ *    out test.c:14:main()
+ */
+
+/* function entry */
+#define IN P("in " __FILE__ ":%s()", __FUNCTION__)
+/* function exit */
+#define OUT P("out " __FILE__ ":%s()", __FUNCTION__)
+/* function abort (return;)  Use as { RET; return; } */
+#define RET DP("out() ")
+/* generic function return */
+#define R(val,type,fmt) E_ { type i = (type) val; DP("out(" fmt ")", i); i; } _E
+/* integer return */
+#define R_I(val) R(val,int,"%d")
+/* pointer return */
+#define R_P(val) R(val,void *,"%p")
+/* long return */
+#define R_UP(val) R(val,long,"%lx")
+
+/* ---------- Assertion Debug Macros ---------- */
+
+/**
+ * Use as: 
+ *     int i = 5;
+ *     // int j = i * 5;
+ *     int j = A_I(i,==,3) * 5;
+ *     // if (i > 3) P("bad")
+ *     if (NOT_I(i,<=,3)) P("bad")
+ *     P("j is %d", j);
+ *     ==> assert: i (=5) !== 3 at test.c:56:main()
+ *     assert: i (=5) !<= 3 at test.c:58:main()
+ *     j is 25
+ *  
+ */
+/* generic assertion check, returns the value of exp */
+#define A(exp,cmp,val,type,fmt) E_ { \
+    type i = (type) (exp); type v = (type) (val); \
+    if (!(i cmp v)) DP("assert: " #exp " (=" fmt ") !" #cmp " " fmt, i, v); \
+    i; \
+} _E
+/* typed assertions */
+#define A_I(exp,cmp,val) A(exp,cmp,val,int,"%d")
+#define A_L(exp,cmp,val) A(exp,cmp,val,long,"%ld")
+#define A_P(exp,cmp,val) A(exp,cmp,val,void *,"%p")
+
+
+/* generic assertion check, returns true iff assertion fails */
+#define NOT(exp,cmp,val,type,fmt) E_ { \
+    type i = (type) (exp); type v = (type) (val); \
+    if (!(i cmp v)) DP("assert: " #exp " (=" fmt ") !" #cmp " " fmt, i, v); \
+    !(i cmp v); \
+} _E
+/* typed assertion checks */
+#define NOT_I(exp,cmp,val) NOT(exp,cmp,val,int,"%d")
+#define NOT_L(exp,cmp,val) NOT(exp,cmp,val,long,"%ld")
+#define NOT_P(exp,cmp,val) NOT(exp,cmp,val,void *,"%p")
 
 
 
@@ -176,9 +245,5 @@ typedef enum OMX_TI_SEVERITYTYPE {
 /* returns the last element of a list */
 #define DLIST_LAST(head) (head).last->me
 
-
-
-
 #endif
-/* File EOF */
 

@@ -1,5 +1,5 @@
 /*
- * memalloc.c
+ * memmgr.c
  *
  * Memory Allocator Interface functions for TI OMAP processors.
  *
@@ -14,7 +14,8 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#include "memalloc.h"
+#include "memmgr.h"
+#include "utils.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -98,48 +99,6 @@ tiler_fmt tiler_get_fmt(SSPtr ssptr)
 
 static int refCnt = 0;
 
-/* statement begin */
-#define S_ do
-/* statement end */
-#define _S while (0)
-/* expression begin */
-#define E_ (
-/* expression end */
-#define _E )
-
-/* debug print (fmt must be a literal) */
-#define P(fmt, ...) S_ { fprintf(stdout, fmt "\n", __VA_ARGS__); fflush(stdout); } _S
-/* debug print with context information (fmt must be a literal) */
-#define DP(fmt, ...) P(fmt " in (" __FILE__ ":%d:%s())", __VA_ARGS__, __LINE__, __FUNCTION__)
-/* generic assertion check, returns the value of exp */
-#define A(exp,cmp,val,type,fmt) E_ { \
-    type i = (type) (exp); type v = (type) (val); \
-    if (!(i cmp v)) DP("assert: " #exp " (=" fmt ") !" #cmp " " fmt, i, v); \
-    i; \
-} _E
-#define A_I(exp,cmp,val) A(exp,cmp,val,int,"%d")
-#define A_L(exp,cmp,val) A(exp,cmp,val,long,"%ld")
-#define A_P(exp,cmp,val) A(exp,cmp,val,void *,"%p")
-
-/* generic assertion check, returns true iff assertion fails */
-#define NOT(exp,cmp,val,type,fmt) E_ { \
-    type i = (type) (exp); type v = (type) (val); \
-    if (!(i cmp v)) DP("assert: " #exp " (=" fmt ") !" #cmp " " fmt, i, v); \
-    !(i cmp v); \
-} _E
-#define NOT_I(exp,cmp,val) NOT(exp,cmp,val,int,"%d")
-#define NOT_L(exp,cmp,val) NOT(exp,cmp,val,long,"%ld")
-#define NOT_P(exp,cmp,val) NOT(exp,cmp,val,void *,"%p")
-
-/* entry/exit macros */
-#define IN P("in " __FILE__ ":%s()", __FUNCTION__)
-#define OUT P("out " __FILE__ ":%s()", __FUNCTION__)
-#define RET DP("out() ")
-#define R(val,type,fmt) E_ { type i = (type) val; DP("out(" fmt ")", i); i; } _E
-#define R_I(val) R(val,int,"%d")
-#define R_P(val) R(val,void *,"%p")
-#define R_UP(val) R(val,long,"%p")
-
 /**
  * Increases the reference count.  Initialized tiler if this was 
  * the first reference 
@@ -171,7 +130,7 @@ static int dec_ref()
     return 0;
 }
 
-void *MemAlloc_Alloc(MemAllocBlock blocks[], int num_blocks)
+void *MemMgr_Alloc(MemAllocBlock blocks[], int num_blocks)
 {
     IN;
 
@@ -263,7 +222,7 @@ FAIL:
     return R_P(NULL);
 }
 
-bool MemAlloc_Free(void *bufPtr)
+bool MemMgr_Free(void *bufPtr)
 {
     IN;
 
@@ -313,7 +272,7 @@ bool MemAlloc_Free(void *bufPtr)
     return R_I(!ok);
 }
 
-void *MemAlloc_MapIn1DMode(void *dataPtr, bytes_t size, bytes_t stride)
+void *MemMgr_MapIn1DMode(void *dataPtr, bytes_t size, bytes_t stride)
 {
     IN;
 
@@ -338,7 +297,7 @@ void *MemAlloc_MapIn1DMode(void *dataPtr, bytes_t size, bytes_t stride)
     return R_P(bufPtr);
 }
 
-bool MemAlloc_UnMap(void *bufPtr)
+bool MemMgr_UnMap(void *bufPtr)
 {
     IN;
 
@@ -369,7 +328,7 @@ bool MemAlloc_UnMap(void *bufPtr)
     return R_I(!ok);
 }
 
-bool MemAlloc_Is2DBuffer(void *ptr)
+bool MemMgr_Is2DBuffer(void *ptr)
 {
     IN;
 
@@ -377,7 +336,7 @@ bool MemAlloc_Is2DBuffer(void *ptr)
     return R_I(fmt == TILFMT_8BIT || fmt == TILFMT_16BIT || fmt == TILFMT_32BIT);
 }
 
-bool MemAlloc_Is1DBuffer(void *ptr)
+bool MemMgr_Is1DBuffer(void *ptr)
 {
     IN;
 
@@ -385,7 +344,7 @@ bool MemAlloc_Is1DBuffer(void *ptr)
     return R_I(fmt == TILFMT_PAGE);
 }
 
-bool MemAlloc_IsAlreadyMapped(void *ptr)
+bool MemMgr_IsAlreadyMapped(void *ptr)
 {
     IN;
 
@@ -394,7 +353,7 @@ bool MemAlloc_IsAlreadyMapped(void *ptr)
 }
 
 
-DSPtr MemAlloc_ReMapToDucati(void *bufPtr, bytes_t length)
+DSPtr MemMgr_ReMapToDucati(void *bufPtr, bytes_t length)
 {
     /* assumptions: buffer is already registered, and mapped to tiler */
 
@@ -414,7 +373,7 @@ DSPtr MemAlloc_ReMapToDucati(void *bufPtr, bytes_t length)
     /* map block to ducati space */
 }
 
-bool MemAlloc_DeMapFromDucati(DSPtr bufDPtr)
+bool MemMgr_DeMapFromDucati(DSPtr bufDPtr)
 {
     /* in phase 1, this could be a sub-block of a buffer */
     /* in phase 2, this must be the beginning of a buffer */
@@ -429,7 +388,7 @@ bool MemAlloc_DeMapFromDucati(DSPtr bufDPtr)
     /* unmap block from ducati space */
 }
 
-void *MemAlloc_ReMapFromDucati(MemMapBlock blocks[], int num_blocks)
+void *MemMgr_ReMapFromDucati(MemMapBlock blocks[], int num_blocks)
 {
     /* query tiler driver for each block's information */
 
@@ -438,7 +397,7 @@ void *MemAlloc_ReMapFromDucati(MemMapBlock blocks[], int num_blocks)
     /* map buffer */
 }
 
-bool MemAlloc_DeMap(void *bufPtr)
+bool MemMgr_DeMap(void *bufPtr)
 {
     /* find lengh of buffer in cache */
     bytes_t length = 0;
