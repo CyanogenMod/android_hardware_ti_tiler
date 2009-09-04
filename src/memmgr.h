@@ -65,7 +65,7 @@
  * @author a0194118 (9/1/2009)
  */
 struct MemAllocBlock {
-    kPixelFormat pixelFormat;  /* pixel format */
+    pixel_fmt_t pixelFormat;  /* pixel format */
     union {
         struct {
             pixels_t width;  /* width of 2D buffer */

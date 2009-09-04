@@ -44,9 +44,9 @@ typedef int bool;
  */
 enum pixel_fmt_t {
     PIXEL_FMT_MIN   = 1,
-	PIXEL_FMT_8BIT  = 1,
-	PIXEL_FMT_16BIT = 2,
-	PIXEL_FMT_32BIT = 3,
+    PIXEL_FMT_8BIT  = 1,
+    PIXEL_FMT_16BIT = 2,
+    PIXEL_FMT_32BIT = 3,
     PIXEL_FMT_PAGE  = 4,
     PIXEL_FMT_MAX   = 4
 };
