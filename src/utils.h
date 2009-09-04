@@ -17,6 +17,10 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
+//#define __DEBUG__
+//#define __DEBUG_ENTRY__
+//#define __DEBUG_ASSERT__
+
 /* ---------- Generic Macros Used in Macros ---------- */
 
 /* statement begin */
@@ -38,7 +42,12 @@
  *    ==> val is 5 at test.c:56:main()
  */
 /* debug print (fmt must be a literal); adds new-line. */
+#ifdef __DEBUG__
 #define P(fmt, ...) S_ { fprintf(stdout, fmt "\n", __VA_ARGS__); fflush(stdout); } _S
+#else
+#define P(fmt, ...)
+#endif
+
 /* debug print with context information (fmt must be a literal) */
 #define DP(fmt, ...) P(fmt " at (" __FILE__ ":%d:%s())", __VA_ARGS__, __LINE__, __FUNCTION__)
 
@@ -72,6 +81,7 @@
  *    out test.c:14:main()
  */
 
+#ifdef __DEBUG_ENTRY__
 /* function entry */
 #define IN P("in " __FILE__ ":%s()", __FUNCTION__)
 /* function exit */
@@ -80,6 +90,13 @@
 #define RET DP("out() ")
 /* generic function return */
 #define R(val,type,fmt) E_ { type i = (type) val; DP("out(" fmt ")", i); i; } _E
+#else
+#define IN
+#define OUT
+#define RET
+#define R(val,type,fmt) (val)
+#endif
+
 /* integer return */
 #define R_I(val) R(val,int,"%d")
 /* pointer return */
@@ -103,11 +120,16 @@
  *  
  */
 /* generic assertion check, returns the value of exp */
+#ifdef __DEBUG_ASSERT__
 #define A(exp,cmp,val,type,fmt) E_ { \
     type i = (type) (exp); type v = (type) (val); \
     if (!(i cmp v)) DP("assert: " #exp " (=" fmt ") !" #cmp " " fmt, i, v); \
     i; \
 } _E
+#else
+#define A(exp,cmp,val,type,fmt) (exp)
+#endif
+
 /* typed assertions */
 #define A_I(exp,cmp,val) A(exp,cmp,val,int,"%d")
 #define A_L(exp,cmp,val) A(exp,cmp,val,long,"%ld")
@@ -115,11 +137,16 @@
 
 
 /* generic assertion check, returns true iff assertion fails */
+#ifdef __DEBUG_ASSERT__
 #define NOT(exp,cmp,val,type,fmt) E_ { \
     type i = (type) (exp); type v = (type) (val); \
     if (!(i cmp v)) DP("assert: " #exp " (=" fmt ") !" #cmp " " fmt, i, v); \
     !(i cmp v); \
 } _E
+#else
+#define NOT(exp,cmp,val,type,fmt) (!((exp) cmp (val)))
+#endif
+
 /* typed assertion checks */
 #define NOT_I(exp,cmp,val) NOT(exp,cmp,val,int,"%d")
 #define NOT_L(exp,cmp,val) NOT(exp,cmp,val,long,"%ld")
