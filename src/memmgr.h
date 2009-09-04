@@ -52,35 +52,6 @@
  */
  
 /**
- * Pixel format 
- *  
- * Page mode is encoded in the pixel format to handle different 
- * set of buffers uniformly 
- */
-enum kPixelFormat {
-    kPixelFormatMin = 1,
-	k8bit  = 1,
-	k16bit = 2,
-	k32bit = 3,
-    kPage  = 4,
-    kPixelFormatMax = 4
-};
-
-typedef enum kPixelFormat kPixelFormat;
-
-/**
- * Processors supported
- */
-enum kMemMgr_Proc {
-    kMemMgr_ProcMin = 1,
-    kChiron = 1,
-    kDucati = 2,
-    kMemMgr_ProcMax = 2,
-};
-
-typedef enum kMemMgr_Proc kMemMgr_Proc;
-
-/**
  * Memory Allocator block specification
  *  
  * Size of a 2D buffer is calculated as height * stride.  stride
@@ -112,22 +83,6 @@ struct MemAllocBlock {
 };
 
 typedef struct MemAllocBlock MemAllocBlock;
-
-/**
- * Memory mapping block specification
- * 
- * @author a0194118 (9/1/2009)
- */
-struct MemMapBlock {
-    kMemMgr_Proc processor;
-    union {
-        DSPtr  dsptr;
-        void  *ptr;
-    };
-    bytes_t length;
-};
-
-typedef struct MemMapBlock MemMapBlock;
 
 /**
  * Returns the page size.  This is required for allocating 1D 
@@ -198,30 +153,81 @@ void *MemMgr_Alloc(MemAllocBlock blocks[], int num_blocks);
  * @param bufPtr     Pointer to the buffer allocated (returned) 
  *                   by MemMgr_Alloc()
  * 
- * @return TRUE on success, FALSE on failure
+ * @return 0 on success.  Non-0 on failure.
  */
-bool MemMgr_Free(void *bufPtr);
+int MemMgr_Free(void *bufPtr);
 
 /**
- * Checks if a given virtual address lies in a 2D buffer. 
- * <p> 
- * This function retrieves the system space address that the 
- * virtual address maps to.  If this system space address is 
- * within the 2D tiler area, it is considered lying within a 2D 
- * buffer. 
+ * This function maps the user provided data buffer to the tiler
+ * space as blocks, and maps that area into the process space 
+ * consecutively. You can map a data buffer multiple times, 
+ * resulting in multiple mapping for the same buffer. However, 
+ * you cannot map a buffer that is already mapped to tiler, e.g. 
+ * a buffer pointer returned by this method. 
+ * 
+ * In phase 1, the supported configurations are:
+ * <ol> 
+ * <li> Mapping exactly one 1D block to tiler space (e.g. 
+ * MapIn1DMode). 
+ * </ol>
+ *  
+ * @author a0194118 (9/3/2009)
+ * 
+ * @param blocks     Block specification information.  This 
+ *                   should be an array of at least num_blocks
+ *                   elements.  The ptr fields must contain the
+ *                   user allocated buffers for the block.
+ *                   These will be updated with the mapped
+ *                   addresses of these blocks on success.
+ *  
+ *                   Each block must be page aligned.  Length of
+ *                   each block also must be page aligned.
+ *  
+ * @param num_blocks Number of blocks to be included in the 
+ *                   mapped memory segment
+ * 
+ * @return Pointer to the buffer, which is also the pointer to 
+ *         the first mapped block. NULL if allocation failed.
+ */
+void *MemMgr_Map(MemAllocBlock blocks[], int num_blocks);
+
+/**
+ * This function unmaps the user provided data buffer from tiler
+ * space that was mapped to the tiler space in paged mode using 
+ * MemMgr_Map().  It also unmaps the buffer itself from the 
+ * process space.  Trying to unmap a previously unmapped buffer 
+ * will fail. 
+ * 
+ * @author a0194118 (9/1/2009)
+ * 
+ * @param bufPtr    Pointer to the buffer as returned by a 
+ *                  previous call to MemMgr_MapIn1DMode()
+ *  
+ * @return On success it returns 0. A non-zero address means 
+ *         failure.
+ */
+int MemMgr_UnMap(void *bufPtr);
+
+/**
+ * Checks if a given virtual address is mapped by tiler manager
+ * to tiler space. 
+ * <p>
+ * This function is equivalent to MemMgr_Is1DBuffer(ptr) || 
+ * MemMgr_Is2DBuffer(ptr).  It retrieves the system space
+ * address that the virtual address maps to. If this system 
+ * space address lies within the tiler area, the function 
+ * returns TRUE.
+ *  
  * 
  * @author a0194118 (9/1/2009)
  * 
  * @param ptr   Pointer to a virtual address
  * 
- * @return TRUE if the virtual address is within a mapped 2D 
- *         buffer.  FALSE if the virtual address is not mapped,
- *         invalid, or is mapped to an area other than a 2D
- *         buffer.  In phase 1, however, it is TRUE it
- *         the virtual address is mapped to any area of the
- *         tiler space other than page mode.
+ * @return TRUE if the virtual address is within a buffer that 
+ *         was mapped into tiler space, e.g. by calling
+ *         MemMgr_MapIn1DMode() or MemMgr_MapIn2DMode()
  */
-bool MemMgr_Is2DBuffer(void *ptr);
+bool MemMgr_IsMapped(void *ptr);
 
 /**
  * Checks if a given virtual address lies in a tiler 1D buffer. 
@@ -245,234 +251,48 @@ bool MemMgr_Is2DBuffer(void *ptr);
 bool MemMgr_Is1DBuffer(void *ptr);
 
 /**
- * Checks if a given virtual address is mapped by tiler manager
- * to tiler space. 
- * <p>
- * This function is equivalent to MemMgr_Is1DBuffer(ptr) || 
- * MemMgr_Is2DBuffer(ptr).  It retrieves the system space
- * address that the virtual address maps to. If this system 
- * space address lies within the tiler area, the function 
- * returns TRUE.
- *  
+ * Checks if a given virtual address lies in a 2D buffer. 
+ * <p> 
+ * This function retrieves the system space address that the 
+ * virtual address maps to.  If this system space address is 
+ * within the 2D tiler area, it is considered lying within a 2D 
+ * buffer. 
  * 
  * @author a0194118 (9/1/2009)
  * 
  * @param ptr   Pointer to a virtual address
  * 
- * @return TRUE if the virtual address is within a buffer that 
- *         was mapped into tiler space, e.g. by calling
- *         MemMgr_MapIn1DMode() or MemMgr_MapIn2DMode()
+ * @return TRUE if the virtual address is within a mapped 2D 
+ *         buffer.  FALSE if the virtual address is not mapped,
+ *         invalid, or is mapped to an area other than a 2D
+ *         buffer.  In phase 1, however, it is TRUE it
+ *         the virtual address is mapped to any area of the
+ *         tiler space other than page mode.
  */
-bool MemMgr_IsMapped(void *ptr);
-
-/* ------------------ generic choice ------------------ */
+bool MemMgr_Is2DBuffer(void *ptr);
 
 /**
- * Remaps portion(s) of buffer(s) already mapped to tiler (e.g. 
- * using MemMgr_Alloc, or MemMgr_MapIn1DMode) into another 
- * processor's MMU.  Only certain configurations are supported: 
+ * Returns the stride corresponding to a virtual address.  For
+ * 1D and 2D buffers it returns the stride supplied 
+ * with/acquired during the allocation/mapping.  For non-tiler 
+ * buffers it returns the page size. 
+ * <p> 
+ * NOTE: on Ducati phase 1, stride should return 16K for 8-bit 
+ * 2D buffers, 32K for 16-bit and 32-bit 2D buffers, the stride 
+ * used for alloc/map for 1D buffers, and the page size for 
+ * non-tiler buffers. 
  *  
- * In phase 1, the supported configurations are:
- * <ol> 
- * <li> Mapping exactly one whole block from Chiron to Ducati. 
- * <li> Mapping any number of whole blocks from Ducati to 
- * Chiron. 
- * </ol>
- *  
- * In phase 2, the supported configurations are: 
- * <ol>
- * <li> Mapping exactly one whole buffer from Chiron to Ducati. 
- * <li> Mapping exactly one whole buffer from Ducati to Chiron. 
- * </ol> 
- *  
- * A buffer is any set-of-blocks either allocated by 
- * MemMgr_Alloc() or mapped by MemMgr_Map() functions. 
- *  
- * @author a0194118 (9/1/2009)
- *  
- * @param blocks      Address, source and length of each block 
- *                    to be mapped
- * @param num_blocks  Number of blocks to be mapped.
- * @param target      Pointer to the MemMapBlock structure that 
- *                    will contain the address and size of the
- *                    mapped buffer.  The processor field is the
- *                    target processor to map to.  If the
- *                    mapping fails, the address and length will
- *                    be set to 0.
- * 
- * @return TRUE on success.  FALSE on failure.
- */
-bool MemMgr_ReMap(MemMapBlock blocks[], int num_blocks, MemMapBlock *target);
-
-/**
- * Unmaps a buffer from the MMU of a processor, but not from 
- * tiler space. This method only succeeds for buffers returned 
- * by MemMgr_ReMap, and fails on successive unmaps attempted on
- * the same buffer address. 
+ * For unmapped addresses it returns 0.  However, this cannot be 
+ * used to determine if an address is unmapped as 1D buffers 
+ * could also have 0 stride (e.g. compressed buffers). 
  * 
  * @author a0194118 (9/1/2009)
  * 
- * @param buffer   Address and processor of the buffer, as 
- *                 returned by MemMgr_ReMap()
+ * @param ptr    pointer to a virtual address
  * 
- * @return TRUE on success.  FALSE on failure.
+ * @return The virtual stride of the block that contains the 
+ *         address.
  */
-bool MemMgr_DeMap(MemMapBlock buffer);
-
-/**
- * This function maps the user provided data buffer to the tiler
- * space as blocks, and maps that area into the process space 
- * consecutively. You can map a data buffer multiple times, 
- * resulting in multiple mapping for the same buffer. However, 
- * you cannot map a buffer that is already mapped to tiler, e.g. 
- * a buffer pointer returned by this method. 
- *  
- * In phase 1, the supported configurations are:
- * <ol> 
- * <li> Mapping exactly one 1D block to tiler space (e.g. 
- * MapIn1DMode). 
- * </ol>
- *  
- * In phase 2, these configurations are also supported: 
- * <ol>
- * <li> Mapping exactly one 2D block to tiler space (e.g. 
- * MapIn2DMode). 
- * </ol> 
- *  
- * @author a0194118 (9/3/2009)
- * 
- * @param blocks     Block specification information.  This 
- *                   should be an array of at least num_blocks
- *                   elements.  The ptr fields must contain the
- *                   user allocated buffers for the block.
- *                   These will be updated with the mapped
- *                   addresses of these blocks on success.
- * @param num_blocks Number of blocks to be included in the 
- *                   mapped memory segment
- * 
- * @return Pointer to the buffer, which is also the pointer to 
- *         the first mapped block. NULL if allocation failed.
- */
-void *MemMgr_Map(MemAllocBlock blocks[], int num_blocks);
-
-/* ------------------ original specific choices ------------------ */
-
-/**
- * This function maps the user provided data buffer to the tiler
- * space in paged mode, and maps that area into the process 
- * space. You can map a data buffer multiple times, resulting in
- * multiple mapping for the same buffer. However, you cannot map 
- * a buffer that is already mapped to tiler, e.g. a buffer 
- * pointer returned by this method. 
- *  
- * @author a0194118 (9/1/2009)
- * @param dataPtr Pointer to the buffer allocated by the
- *                user.
- * @param size    Size of the buffer allocated by the user. Must 
- *                be a multiple of stride unless stride is 0.
- * @param stride  The stride of the buffer. size must be a 
- *                multiple of stride unless it is 0.
- * 
- * @return On success it returns a new virtual address that
- *         points to the tiler-mapped 1D buffer.  Else, it
- *         returns NULL.
- */
-void *MemMgr_MapIn1DMode(void *dataPtr, bytes_t size, bytes_t stride);
-
-/**
- * This function unmaps the user provided data buffer from tiler
- * space that was mapped to the tiler space in paged mode using 
- * MemMgr_MapIn1DMode().  It also unmaps the buffer itself 
- * from the process space.  Trying to unmap a previously 
- * unmapped buffer will fail. 
- * 
- * @author a0194118 (9/1/2009)
- * 
- * @param bufPtr    Pointer to the buffer as returned by a 
- *                  previous call to MemMgr_MapIn1DMode()
- *  
- * @return On success it returns TRUE.  Else, it returns FALSE. 
- */
-bool MemMgr_UnMap(void *bufPtr);
-
-/**
- * Remaps a portion of a buffer already mapped to tiler (e.g.
- * using MemMgr_Alloc, or MemMgr_MapIn1DMode) into the 
- * Ducati's MMU. In phase 2, this portion may contain a list of 
- * separate whole blocks, but in phase 1, the address range 
- * specified by bufPtr and length must be a single whole block. 
- *  
- * @author a0194118 (9/1/2009)
- * 
- * @param bufPtr    Pointer to a buffer 
- * @param length    Length of the buffer 
- * 
- * @return A Ducati virtual address that points to the same 
- *         buffer.
- */
-DSPtr MemMgr_ReMapToDucati(void *bufPtr, bytes_t length);
-
-/* You can implement tiler-mapped-agnostic MapToDucati in the following fashion. 
-   Note, however, that you will need to keep track of the stride and the new
-   mapped buffer pointer.
- 
-    DSPtr MemMgr_MapToDucati(void *bufPtr, bytes_t length, bytes_t stride)
-    {
-        if (!MemMgr_IsMapped(bufPtr))
-        {
-            void *newPtr = MemMgr_MapIn1DMode(bufPtr, length, stride);
-            return MemMgr_ReMapToDucati(newPtr, length);
-        }
-        else
-        {
-            return MemMgr_ReMapToDucati(bufPtr, length);
-        }
-    }
-*/
-
-/**
- * Unmaps a buffer from the Ducati's MMU, but not from tiler. 
- * This method only succeeds for addresses returned by 
- * MemMgr_ReMapToDucati, and fails on successive unmaps 
- * attempted on the same ducati address. 
- * 
- * @author a0194118 (9/1/2009)
- * 
- * @param bufDPtr   Ducati-space virtual address of the buffer, 
- *                  as returned by Memmgr_ReMapToDucati
- * 
- * @return TRUE on success.  FALSE on failure.
- */
-bool MemMgr_DeMapFromDucati(DSPtr bufDPtr);
-
-/**
- * Maps a set of blocks already mapped to tiler from the Ducati 
- * side into the host MMU. 
- *  
- * @author a0194118 (9/1/2009)
- * 
- * @param blocks      Address and length of each block to be 
- *                    mapped 
- * @param num_blocks  Number of blocks to be mapped.
- * 
- * @return pointer to the buffer on the host, or NULL on 
- *         failure.
- */
-void *MemMgr_ReMapFromDucati(MemMapBlock blocks[], int num_blocks);
-
-/**
- * Unmaps a buffer from the MMU, but not from tiler space.  This 
- * method only succeeds for buffers returned by 
- * MemMgr_ReMapFromDucati, and fails on successive unmaps 
- * attempted on the same buffer address. 
- * 
- * @author a0194118 (9/1/2009)
- * 
- * @param bufPtr   Address of the buffer, as returned by 
- *                 MemMgr_MapFromDucati()
- * 
- * @return TRUE on success.  FALSE on failure.
- */
-bool MemMgr_DeMap(void *bufPtr);
+bytes_t MemMgr_GetStride(void *ptr);
 
 #endif

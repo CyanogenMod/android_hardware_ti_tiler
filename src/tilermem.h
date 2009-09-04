@@ -17,6 +17,9 @@
 #ifndef _TILERMEM_H_
 #define _TILERMEM_H_
 
+/* retrieve type definitions */
+#include "mem_types.h"
+
 /**
  * Tiler Memory Allocator is responsible for: 
  * <ol> 
@@ -25,32 +28,12 @@
  * <li>Converting virtual addresses to physical addresses. 
  * </ol>
  */
-/** ---------------------------------------------------------------------------
- * Type definitions
- */
 
 /**
- * System Space Pointer
- * 
- * This is handled as a unsigned long so that no dereferencing
- * is allowed by user space components.
- */
-typedef unsigned long SSPtr;
-
-/**
- * Returns the tiler stride corresponding to the virtual 
- * address.  For 1D and 2D buffers it returns the stride 
- * supplied with the allocation/mapping.  For non-tiler buffers 
- * it returns the page size. 
- * <p> 
- * NOTE: on Ducati phase 1, stride should return 16K for 8-bit 
- * 2D buffers, 32K for 16-bit and 32-bit 2D buffers, the stride 
- * used for alloc/map for 1D buffers, and the page size for 
- * non-tiler buffers. 
- *  
- * For unmapped addresses it returns 0.  However, this cannot be 
- * used to determine if an address is unmapped as 1D buffers 
- * could also have 0 stride (e.g. compressed buffers). 
+ * Returns the tiler stride corresponding to the system space 
+ * address.  For 2D buffers it returns the container stride. For
+ * 1D buffers it returns the page size.  For non-tiler buffers 
+ * it returns 0. 
  * 
  * @author a0194118 (9/1/2009)
  * 
@@ -58,7 +41,7 @@ typedef unsigned long SSPtr;
  * 
  * @return The stride of the block that contains the address.
  */
-bytes_t TilerMem_GetStride(void *ptr);
+bytes_t TilerMem_GetStride(SSPtr ssptr);
 
 /**
  * Retrieves the physical system-space address that corresponds 
@@ -73,6 +56,5 @@ bytes_t TilerMem_GetStride(void *ptr);
  *         or unmapped, it returns 0.
  */
 SSPtr TilerMem_VirtToPhys(void *ptr);
-
 
 #endif

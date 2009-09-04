@@ -37,6 +37,23 @@ typedef unsigned short pixels_t;
 typedef int bool;
 
 /**
+ * Pixel format 
+ *  
+ * Page mode is encoded in the pixel format to handle different 
+ * set of buffers uniformly 
+ */
+enum pixel_fmt_t {
+    PIXEL_FMT_MIN   = 1,
+	PIXEL_FMT_8BIT  = 1,
+	PIXEL_FMT_16BIT = 2,
+	PIXEL_FMT_32BIT = 3,
+    PIXEL_FMT_PAGE  = 4,
+    PIXEL_FMT_MAX   = 4
+};
+
+typedef enum pixel_fmt_t pixel_fmt_t;
+
+/**
  * Ducati Space Virtual Address Pointer
  * 
  * This is handled as a unsigned long so that no dereferencing
@@ -51,6 +68,15 @@ typedef unsigned long DSPtr;
  * is allowed by user space components.
  */
 typedef unsigned long SSPtr;
+
+/**
+ * Error values 
+ *  
+ * Page mode is encoded in the pixel format to handle different 
+ * set of buffers uniformly 
+ */
+#define MEMMGR_ERR_NONE    0
+#define MEMMGR_ERR_GENERIC 1
 
 #endif
 
