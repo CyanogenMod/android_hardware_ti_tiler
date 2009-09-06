@@ -43,13 +43,13 @@
  */
 /* debug print (fmt must be a literal); adds new-line. */
 #ifdef __DEBUG__
-#define P(fmt, ...) S_ { fprintf(stdout, fmt "\n", __VA_ARGS__); fflush(stdout); } _S
+#define P(fmt, ...) S_ { fprintf(stdout, fmt "\n", ##__VA_ARGS__); fflush(stdout); } _S
 #else
 #define P(fmt, ...)
 #endif
 
 /* debug print with context information (fmt must be a literal) */
-#define DP(fmt, ...) P(fmt " at (" __FILE__ ":%d:%s())", __VA_ARGS__, __LINE__, __FUNCTION__)
+#define DP(fmt, ...) P(fmt " at %s(" __FILE__ ":%d)", ##__VA_ARGS__, __FUNCTION__, __LINE__)
 
 /* ---------- Program Flow Debug Macros ---------- */
 
@@ -71,21 +71,21 @@
  *      OUT;
  *    }
  *    ==>
- *    in test.c:main()
- *    in test.c:get5()
- *    out(5) at test.c:3:get5()
- *    in test.c:check()
- *    out() at test.c:7:check()
- *    in test.c:check()
- *    out test.c:check()
- *    out test.c:14:main()
+ *    in main(test.c:11)
+ *    in get5(test.c:2)
+ *    out(5) at get5(test.c:3)
+ *    in check(test.c:6)
+ *    out() at check(test.c:7)
+ *    in check(test.c:6)
+ *    out check(test.c:8)
+ *    out main(test.c:14)
  */
 
 #ifdef __DEBUG_ENTRY__
 /* function entry */
-#define IN P("in " __FILE__ ":%s()", __FUNCTION__)
+#define IN P("in %s(" __FILE__ ":%d)", __FUNCTION__, __LINE__)
 /* function exit */
-#define OUT P("out " __FILE__ ":%s()", __FUNCTION__)
+#define OUT P("out %s(" __FILE__ ":%d)", __FUNCTION__, __LINE__)
 /* function abort (return;)  Use as { RET; return; } */
 #define RET DP("out() ")
 /* generic function return */
@@ -153,6 +153,12 @@
 #define NOT_P(exp,cmp,val) NOT(exp,cmp,val,void *,"%p")
 
 
+/* allocation macro */
+#define NEW(type)    (type*)calloc(1, sizeof(type))
+#define NEWN(type,n) (type*)calloc(n, sizeof(type))
+
+/* free variable and set it to NULL */
+#define FREE(var)    S_ { free(var); var = NULL; } _S
 
 /* 
 
@@ -180,6 +186,236 @@
    :NOTE: If you use a macro with a field argument, you must not have NULL
    elements because the field of any element must be/point to the list
    info structure */
+
+/*
+  Usage:
+ 
+  DLIST macros are designed for preallocating the list info structures, e.g. in
+  an array.  This is why most macros take a list info structure, and not a
+  pointer to a list info structure.
+ 
+  Basic linked list consists of element structure and list info structure
+ 
+    struct elem {
+        int data;
+    } *elA, *elB;
+    struct list {
+        struct elem *me;
+        struct list *last, *next;
+    } head, *inA, *inB, *in;
+    
+    DLIST_INIT(head);              // initialization -> ()
+    DLIST_IS_EMPTY(head) == TRUE;  // emptiness check
+ 
+    // add element at beginning of list -> (1)
+    elA = NEW(struct elem);
+    elA->data = 1;
+    inA = NEW(struct list);
+    DLIST_ADD_AFTER(head, elA, *inA);
+    
+    // add before an element -> (2, 1)
+    elB = NEW(struct elem);
+    elB->data = 2;
+    inB = NEW(struct list);
+    DLIST_ADD_BEFORE(*inA, elB, *inB);
+
+    // move an element to another position or another list -> (1, 2)
+    DLIST_MOVE_BEFORE(head, *inB);
+ 
+    // works even if the position is the same -> (1, 2)
+    DLIST_MOVE_BEFORE(head, *inB);
+
+    // get first and last elements
+    DLIST_FIRST(head) == elA;
+    DLIST_LAST(head) == elB;
+ 
+    // loop through elements
+    DLIST_LOOP(head, in) {
+        P("%d", in->me->data);
+    }
+ 
+    // remove element -> (2)
+    DLIST_REMOVE(*inA);
+    FREE(elA);
+    FREE(inA);
+ 
+    // delete list
+    DLIST_SAFE_LOOP(head, in, inA) {
+        DLIST_REMOVE(*in);
+        FREE(in->me);
+        FREE(in);
+    }
+
+  You can combine the element and list info structures to create an easy list,
+  but you still need to specify both element and info structure while adding
+  elements.
+ 
+    struct elem {
+        int data;
+        struct elem *me, *last, *next;
+    } head, *el, *elA, *elB;
+ 
+    DLIST_INIT(head);              // initialization -> ()
+    DLIST_IS_EMPTY(head) == TRUE;  // emptiness check
+ 
+    // add element at beginning of list -> (1)
+    elA = NEW(struct elem);
+    elA->data = 1;
+    DLIST_ADD_AFTER(head, elA, *elA);
+    
+    // add before an element -> (2, 1)
+    elB = NEW(struct elem);
+    elB->data = 2;
+    DLIST_ADD_BEFORE(*elA, elB, *elB);
+
+    // move an element to another position or another list -> (1, 2)
+    DLIST_MOVE_BEFORE(head, *elB);
+ 
+    // works even if the position is the same -> (1, 2)
+    DLIST_MOVE_BEFORE(head, *elB);
+
+    // get first and last elements
+    DLIST_FIRST(head) == elA;
+    DLIST_LAST(head) == elB;
+ 
+    // loop through elements
+    DLIST_LOOP(head, el) {
+        P("%d", el->data);
+    }
+ 
+    // remove element -> (2)
+    DLIST_REMOVE(*elA);
+    FREE(elA);
+ 
+    // delete list
+    DLIST_SAFE_LOOP(head, el, elA) {
+        DLIST_REMOVE(*el);
+        FREE(el);
+    }
+
+  A better way to get to the list structure from the element structure is to
+  enclose a pointer the list structure in the element structure.  This allows
+  getting to the next/previous element from the element itself.
+ 
+    struct elem;
+    struct list {
+        struct elem *me;
+        struct list *last, *next;
+    } head, *inA, *inB, *in;
+    struct elem {
+        int data;
+        struct list *list_data;
+    } *elA, *elB, *el;
+ 
+    // or
+ 
+    struct elem {
+        int data;
+        struct list {
+            struct elem *me;
+            struct list *last, *next;
+        } *list_data;
+    } *elA, *elB, *el;
+    struct list head, *inA, *inB, *in;
+ 
+    DLIST_INIT(head);              // initialization -> ()
+    DLIST_IS_EMPTY(head) == TRUE;  // emptiness check
+ 
+    // add element at beginning of list -> (1)
+    elA = NEW(struct elem);
+    elA->data = 1;
+    inA = NEW(struct list);
+    DLIST_PADD_AFTER(head, elA, inA, list_data);
+    
+    // add before an element -> (2, 1)
+    elB = NEW(struct elem);
+    elB->data = 2;
+    inB = NEW(struct list);
+    DLIST_PADD_BEFORE(*elA, elB, inB, list_data);
+
+    // move an element to another position or another list -> (1, 2)
+    DLIST_MOVE_BEFORE(head, *inB);
+ 
+    // works even if the position is the same -> (1, 2)
+    DLIST_MOVE_BEFORE(head, *inB);
+
+    // get first and last elements
+    DLIST_FIRST(head) == elA;
+    DLIST_LAST(head) == elB;
+ 
+    // loop through elements
+    DLIST_LOOP(head, in) {
+        P("%d", in->me->data);
+    }
+    DLIST_PLOOP(head, el, list_data) {
+        P("%d", el->data);
+    }
+ 
+    // remove element
+    DLIST_REMOVE(*inA);
+    FREE(inA);
+    FREE(elA);
+
+    // delete list
+    DLIST_SAFE_PLOOP(head, el, elA, list_data) {
+        DLIST_REMOVE(*el->list_data);
+        FREE(el->list_data);
+        FREE(el);
+    }
+
+  Lastly, you can include the list data in the element structure itself.
+ 
+    struct elem {
+        int data;
+        struct list {
+            struct list *last, *next;
+            struct elem *me;
+        } list_data;
+    } *elA, *elB, *el;
+    struct list head, *in;
+    
+    DLIST_INIT(head);              // initialization -> ()
+    DLIST_IS_EMPTY(head) == TRUE;  // emptiness check
+ 
+    // add element at beginning of list -> (1)
+    elA = NEW(struct elem);
+    elA->data = 1;
+    DLIST_MADD_AFTER(head, elA, list_data);
+    
+    // add before an element -> (2, 1)
+    elB = NEW(struct elem);
+    elB->data = 2;
+    DLIST_PADD_BEFORE(elA->list_data, elB, list_data);
+
+    // move an element to another position or another list -> (1, 2)
+    DLIST_MOVE_BEFORE(head, elB->list_data);
+ 
+    // works even if the position is the same -> (1, 2)
+    DLIST_MOVE_BEFORE(head, elB->list_data);
+
+    // get first and last elements
+    DLIST_FIRST(head) == elA;
+    DLIST_LAST(head) == elB;
+ 
+    // loop through elements
+    DLIST_LOOP(head, in) {
+        P("%d", in->me->data);
+    }
+    DLIST_MLOOP(head, el, list_data) {
+        P("%d", el->data);
+    }
+  
+    // remove element
+    DLIST_REMOVE(elA->list_data);
+    FREE(elA);
+
+    // delete list
+    DLIST_SAFE_MLOOP(head, el, elA, list_data) {
+        DLIST_REMOVE(el->list_data);
+        FREE(el);
+    }
+
+ */
 
 /* -- internal (generic direction) macros -- */
 #define DLIST_move__(base, info, next, last) ((info).last = &base)->next = ((info).next = (base).next)->last = &(info)
