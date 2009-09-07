@@ -1,13 +1,10 @@
-SHAREDINCPATH=-I.
-LIB=libdmmdrv.so
-PUBLIC_API=tilermgr.h
+LIB=libtilermgr.so
+PUBLIC_HDR=tilermgr.h
 
 SRC=\
 	tilermgr.c
 
-INCLUDE+=$(SHAREDINCPATH)
-
-CFLAGS+=-Wall -fpic -pipe -ansi $(INCLUDE)
+CFLAGS+=-Wall -fpic -pipe -ansi -I./ -I$(TILER_DRIVER_INC_PATH)
 
 CC=$(CROSS)gcc
 OBJ=$(SRC:.c=.o)
@@ -16,7 +13,7 @@ all:: $(LIB)
 
 install::
 	cp -f $(LIB) $(LIBDIR)
-	cp -f $(PUBLIC_API) $(INCDIR)
+	cp -f $(PUBLIC_HDR) $(INCDIR)
 
 $(LIB):: $(OBJ)
 	$(CC) $(CFLAGS) -shared -o $(LIB) $(OBJ)
@@ -27,4 +24,4 @@ clean::
 
 distclean:: clean
 	rm -f $(LIBDIR)/$(LIB)
-	rm -f $(INCDIR)/$(PUBLIC_API)
+	rm -f $(INCDIR)/$(PUBLIC_HDR)
