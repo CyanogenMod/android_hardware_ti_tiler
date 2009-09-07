@@ -65,21 +65,21 @@
  * @author a0194118 (9/1/2009)
  */
 struct MemAllocBlock {
-    pixel_fmt_t pixelFormat;  /* pixel format */
+    pixel_fmt_t pixelFormat; /* pixel format */
     union {
         struct {
             pixels_t width;  /* width of 2D buffer */
             pixels_t height; /* height of 2D buffer */
         };
         struct {
-            bytes_t length;  /* length of 1D buffer.  Must be multiple of
+            bytes_t  length; /* length of 1D buffer.  Must be multiple of
                                 stride if stride is not 0. */
         };
     };
-    unsigned long stride;    /* must be multiple of page size.  Can be 0 only
-                                if pixelFormat is kPage. */
-    void *ptr;               /* pointer to beginning of buffer */
-    unsigned long reserved;  /* system space address (used internally) */
+    uint32_t stride;    /* must be multiple of page size.  Can be 0 only
+                           if pixelFormat is PIXEL_FMT_PAGE. */
+    void    *ptr;       /* pointer to beginning of buffer */
+    uint32_t reserved;  /* system space address (used internally) */
 };
 
 typedef struct MemAllocBlock MemAllocBlock;
@@ -116,10 +116,6 @@ bytes_t MemMgr_PageSize();
  * system-space addresses, while the ptr fields will be set to 
  * the individual blocks.  The stride information is set for 2D 
  * blocks. 
- * <p> 
- * Phase 2 may allow passing preallocated data pointers in the 
- * ptr field of the MemAllocBlock structure.  These are assumed 
- * to be cacheable, although they may not be. 
  * 
  * @author a0194118 (9/1/2009)
  * 
@@ -144,16 +140,13 @@ void *MemMgr_Alloc(MemAllocBlock blocks[], int num_blocks);
  * This function unmaps the processor's virtual address to the 
  * tiler address for all blocks allocated, unregisters the 
  * buffer, and frees all of its tiler blocks. 
- * <p> 
- * In phase 2, memalloc free will not free any preallocated 
- * buffers passed into MemMgr_Alloc(). 
  *  
  * @author a0194118 (9/1/2009)
  * 
  * @param bufPtr     Pointer to the buffer allocated (returned) 
  *                   by MemMgr_Alloc()
  * 
- * @return 0 on success.  Non-0 on failure.
+ * @return 0 on success.  Non-0 error value on failure.
  */
 int MemMgr_Free(void *bufPtr);
 
@@ -165,7 +158,7 @@ int MemMgr_Free(void *bufPtr);
  * you cannot map a buffer that is already mapped to tiler, e.g. 
  * a buffer pointer returned by this method. 
  * 
- * In phase 1, the supported configurations are:
+ * In phase 1 and 2, the supported configurations are:
  * <ol> 
  * <li> Mapping exactly one 1D block to tiler space (e.g. 
  * MapIn1DMode). 
@@ -203,8 +196,7 @@ void *MemMgr_Map(MemAllocBlock blocks[], int num_blocks);
  * @param bufPtr    Pointer to the buffer as returned by a 
  *                  previous call to MemMgr_MapIn1DMode()
  *  
- * @return On success it returns 0. A non-zero address means 
- *         failure.
+ * @return 0 on success.  Non-0 error value on failure.
  */
 int MemMgr_UnMap(void *bufPtr);
 
@@ -223,9 +215,9 @@ int MemMgr_UnMap(void *bufPtr);
  * 
  * @param ptr   Pointer to a virtual address
  * 
- * @return TRUE if the virtual address is within a buffer that 
- *         was mapped into tiler space, e.g. by calling
- *         MemMgr_MapIn1DMode() or MemMgr_MapIn2DMode()
+ * @return TRUE (non-0) if the virtual address is within a 
+ *         buffer that was mapped into tiler space, e.g. by
+ *         calling MemMgr_MapIn1DMode() or MemMgr_MapIn2DMode()
  */
 bool MemMgr_IsMapped(void *ptr);
 
@@ -241,12 +233,12 @@ bool MemMgr_IsMapped(void *ptr);
  * 
  * @param ptr   Pointer to a virtual address
  * 
- * @return TRUE if the virtual address is within a mapped 1D 
- *         tiler buffer.  FALSE if the virtual address is not
- *         mapped, invalid, or is mapped to an area other than a
- *         1D tiler buffer.  In phase 1, however, it is TRUE it
- *         the virtual address is mapped to the page-mode area
- *         of the tiler space.
+ * @return TRUE (non-0) if the virtual address is within a 
+ *         mapped 1D tiler buffer.  FALSE (0) if the virtual
+ *         address is not mapped, invalid, or is mapped to an
+ *         area other than a 1D tiler buffer.  In phase 1,
+ *         however, it is TRUE it the virtual address is mapped
+ *         to the page-mode area of the tiler space.
  */
 bool MemMgr_Is1DBlock(void *ptr);
 
@@ -262,10 +254,10 @@ bool MemMgr_Is1DBlock(void *ptr);
  * 
  * @param ptr   Pointer to a virtual address
  * 
- * @return TRUE if the virtual address is within a mapped 2D 
- *         buffer.  FALSE if the virtual address is not mapped,
- *         invalid, or is mapped to an area other than a 2D
- *         buffer.  In phase 1, however, it is TRUE it
+ * @return TRUE (non-0) if the virtual address is within a 
+ *         mapped 2D buffer.  FALSE (0) if the virtual address
+ *         is not mapped, invalid, or is mapped to an area other
+ *         than a 2D buffer.  In phase 1, however, it is TRUE it
  *         the virtual address is mapped to any area of the
  *         tiler space other than page mode.
  */

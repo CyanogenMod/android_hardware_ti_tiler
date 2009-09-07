@@ -24,12 +24,12 @@
 /** 
  * Buffer length in bytes
  */
-typedef unsigned long bytes_t;
+typedef uint32_t bytes_t;
 
 /**
  * Length in pixels
  */ 
-typedef unsigned short pixels_t;
+typedef uint16_t pixels_t;
 
 /**
  * Boolean
@@ -59,7 +59,7 @@ typedef enum pixel_fmt_t pixel_fmt_t;
  * This is handled as a unsigned long so that no dereferencing
  * is allowed by user space components.
  */
-typedef unsigned long DSPtr;
+typedef uint32_t DSPtr;
 
 /**
  * System Space Pointer
@@ -67,7 +67,7 @@ typedef unsigned long DSPtr;
  * This is handled as a unsigned long so that no dereferencing
  * is allowed by user space components.
  */
-typedef unsigned long SSPtr;
+typedef uint32_t SSPtr;
 
 /**
  * Error values 

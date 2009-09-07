@@ -53,7 +53,7 @@ int TilerMgr_UnMap(SSPtr p) { return 0; }
 /* list of allocations */
 struct _AllocData {
     void     *bufPtr;
-    uint32_t  offset;
+    uint32_t  tiler_id;
     int       buf_type;
     struct _AllocList {
         struct _AllocList *next, *last;
@@ -83,7 +83,7 @@ static void init()
  * 
  * @author a0194118 (9/2/2009)
  * 
- * @return 0 on success, non-0 on failure.
+ * @return 0 on success, non-0 error value on failure.
  */
 static int inc_ref()
 {
@@ -112,7 +112,7 @@ static int inc_ref()
  * 
  * @author a0194118 (9/2/2009)
  * 
- * @return 0 on success, non-0 on failure.
+ * @return 0 on success, non-0 error value on failure.
  */
 static int dec_ref()
 {
@@ -145,7 +145,16 @@ static bytes_t def_size(tiler_block_info *blk)
             blk->height * def_stride(blk->width * def_bpp(blk->fmt)));
 }
 
-enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
+/**
+ * Returns the tiler format for an address
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param ssptr   Address
+ * 
+ * @return The tiler format
+ */
+static enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
 {
 #ifndef __STUB_TILER__
     return (ssptr == 0              ? TILFMT_INVALID :
@@ -160,9 +169,10 @@ enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
     _AllocData *ad;
     void *ptr = (void *) ssptr;
     if (!ptr) return TILFMT_INVALID;
+    // P("?%p", (void *)ssptr);
     DLIST_MLOOP(bufs, ad, link) {
         int ix;
-        struct tiler_buf_info *buf = (struct tiler_buf_info *) ad->offset;
+        struct tiler_buf_info *buf = (struct tiler_buf_info *) ad->tiler_id;
         // P("buf[%d]", buf->num_blocks);
         for (ix = 0; ix < buf->num_blocks; ix++)
         {
@@ -176,7 +186,16 @@ enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
 #endif
 }
 
-SSPtr tiler_alloc(struct tiler_block_info *blk)
+/**
+ * Allocates a memory block using tiler
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param blk    Pointer to the block info
+ * 
+ * @return ssptr of block allocated, or 0 on error
+ */
+static SSPtr tiler_alloc(struct tiler_block_info *blk)
 {
     blk->ptr = NULL;
     if (blk->fmt == PIXEL_FMT_PAGE)
@@ -191,7 +210,16 @@ SSPtr tiler_alloc(struct tiler_block_info *blk)
     return blk->ssptr;
 }
 
-int tiler_free(struct tiler_block_info *blk)
+/**
+ * Frees a memory block using tiler
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param blk    Pointer to the block info
+ * 
+ * @return 0 on success, non-0 error value on failure.
+ */
+static int tiler_free(struct tiler_block_info *blk)
 {
     if (blk->fmt == PIXEL_FMT_PAGE)
     {
@@ -203,7 +231,16 @@ int tiler_free(struct tiler_block_info *blk)
     }
 }
 
-SSPtr tiler_map(struct tiler_block_info *blk)
+/**
+ * Maps a memory block into tiler using tiler
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param blk    Pointer to the block info
+ * 
+ * @return ssptr of block mapped, or 0 on error
+ */
+static SSPtr tiler_map(struct tiler_block_info *blk)
 {
     if (blk->fmt == PIXEL_FMT_PAGE)
     {
@@ -216,7 +253,16 @@ SSPtr tiler_map(struct tiler_block_info *blk)
     return blk->ssptr;
 }
 
-int tiler_unmap(struct tiler_block_info *blk)
+/**
+ * Unmaps a memory block from tiler using tiler
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param blk    Pointer to the block info
+ * 
+ * @return 0 on success, non-0 error value on failure.
+ */
+static int tiler_unmap(struct tiler_block_info *blk)
 {
     if (blk->fmt == PIXEL_FMT_PAGE)
     {
@@ -228,7 +274,17 @@ int tiler_unmap(struct tiler_block_info *blk)
     }
 }
 
-bytes_t tiler_size(struct tiler_block_info *blks, int num_blocks)
+/**
+ * Returns the size of a buffer.
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param blks        Pointer to array of block info structures
+ * @param num_blocks  Number of blocks
+ * 
+ * @return Size of a resulting buffer
+ */
+static bytes_t tiler_size(struct tiler_block_info *blks, int num_blocks)
 {
     bytes_t size = 0;
     int ix;
@@ -239,8 +295,21 @@ bytes_t tiler_size(struct tiler_block_info *blks, int num_blocks)
     return size;
 }
 
-void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
-                 uint32_t *offset)
+/**
+ * Registers a buffer structure with tiler, and maps the buffer 
+ * into memory using tiler. On success, it writes the tiler ID 
+ * of the buffer into the area pointed by tiler ID. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param blks        Pointer to array of block info structures
+ * @param num_blocks  Number of blocks
+ * @param tiler_id      Pointer to tiler ID.
+ * 
+ * @return pointer to the mapped buffer.
+ */
+static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
+                 uint32_t *tiler_id)
 {
     /* get size */
     bytes_t size = tiler_size(blks, num_blocks);
@@ -302,33 +371,64 @@ void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
         }
     }
 
-    *offset = buf.offset;
+    *tiler_id = buf.offset;
     return bufPtr;
 }
 
-static void buf_cache_add(void *bufPtr, uint32_t offset, int buf_type)
+/**
+ * Records a buffer-pointer -- tiler-ID mapping for a specific 
+ * buffer type. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param bufPtr    Buffer pointer
+ * @param tiler_id  Tiler ID
+ * @param buf_type  Buffer type: BUF_ALLOCED or BUF_MAPPED
+ */
+static void buf_cache_add(void *bufPtr, uint32_t tiler_id, int buf_type)
 {
     _AllocData *ad = NEW(_AllocData);
     ad->bufPtr = bufPtr;
-    ad->offset = offset;
+    ad->tiler_id = tiler_id;
     ad->buf_type = buf_type;
     DLIST_MADD_BEFORE(bufs, ad, link);
 }
 
+/**
+ * Retrieves the tiler ID for given buffer pointer and buffer 
+ * type from the records.  If the tiler ID is found, it is 
+ * removed from the records as well. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param bufPtr    Buffer pointer
+ * @param buf_type  Buffer type: BUF_ALLOCED or BUF_MAPPED
+ * 
+ * @return uint32_t Tiler ID on success, 0 on failure.
+ */
 static uint32_t buf_cache_del(void *bufPtr, int buf_type)
 {
     _AllocData *ad;
     DLIST_MLOOP(bufs, ad, link) {
         if (ad->bufPtr == bufPtr && ad->buf_type == buf_type) {
-            uint32_t offset = ad->offset;
+            uint32_t tiler_id = ad->tiler_id;
             DLIST_REMOVE(ad->link);
             FREE(ad);
-            return offset;
+            return tiler_id;
         }
     }
     return 0;
 }
 
+/**
+ * Checks the consistency of the internal record cache.  The 
+ * number of elements in the cache should equal to the number of 
+ * references. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @return 0 on success, non-0 error value on failure. 
+ */
 static int cache_check()
 {
     int num_bufs = 0;
@@ -342,13 +442,18 @@ static int cache_check()
 }
 
 /**
- * Checks whether the tiler_block_info is filled in correctly
+ * Checks whether the tiler_block_info is filled in correctly. 
+ * Verifies the pixel format, correct length, width and or 
+ * height, the length/stride relationship for 1D buffers, and 
+ * the correct stride for 2D buffers.  Also verifies block size 
+ * to be page sized if desired. 
  * 
  * @author a0194118 (9/4/2009)
  * 
- * @param blk   Pointer to the tiler_block_info struct
- * 
- * @return 0 on success, non-0 on failure
+ * @param blk            Pointer to the tiler_block_info struct
+ * @param is_page_sized  Whether the block needs to be page 
+ *                       sized (fit on whole pages).
+ * @return 0 on success, non-0 error value on failure. 
  */
 static int check_block(tiler_block_info *blk, bool is_page_sized)
 {
@@ -382,7 +487,22 @@ static int check_block(tiler_block_info *blk, bool is_page_sized)
     return MEMMGR_ERR_NONE;
 }
 
-int check_blocks(struct tiler_block_info *blks, int num_blocks,
+/**
+ * Checks whether the block information is correct for map and 
+ * alloc operations.  Checks the number of blocks, and validity 
+ * of each block.  Warns if reserved member is not 0. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param blks                 Pointer to the block info array.
+ * @param num_blocks           Number of blocks.
+ * @param num_pagesize_blocks  Number of blocks that must be 
+ *                             page sized (these must be in
+ *                             front)
+ * 
+ * @return 0 on success, non-0 error value on failure. 
+ */
+static int check_blocks(struct tiler_block_info *blks, int num_blocks,
                  int num_pagesize_blocks)
 {
     /* check arguments */
@@ -406,7 +526,16 @@ int check_blocks(struct tiler_block_info *blks, int num_blocks,
     return MEMMGR_ERR_NONE;
 }
 
-void reset_blocks(struct tiler_block_info *blks, int num_blocks)
+/**
+ * Resets the ptr and reserved fields of the block info 
+ * structures. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param blks                 Pointer to the block info array.
+ * @param num_blocks           Number of blocks.
+ */
+static void reset_blocks(struct tiler_block_info *blks, int num_blocks)
 {
     int ix;
     for (ix = 0; ix < num_blocks; ix++)
@@ -436,7 +565,7 @@ void *MemMgr_Alloc(MemAllocBlock blocks[], int num_blocks)
 
     /* ----- begin recoverable portion ----- */
     int ix;
-    uint32_t offset;
+    uint32_t tiler_id;
 
     /* allocate each buffer using tiler driver and initialize block info */
     for (ix = 0; ix < num_blocks; ix++)
@@ -445,10 +574,10 @@ void *MemMgr_Alloc(MemAllocBlock blocks[], int num_blocks)
         if (NOT_I(tiler_alloc(blks + ix),>,0)) goto FAIL_ALLOC;
     }
 
-    bufPtr = tiler_mmap(blks, num_blocks, &offset);
+    bufPtr = tiler_mmap(blks, num_blocks, &tiler_id);
     if (A_P(bufPtr,!=,0)) {
-        /* cache offset for buffer */
-        buf_cache_add(bufPtr, offset, BUF_ALLOCED);
+        /* cache tiler ID for buffer */
+        buf_cache_add(bufPtr, tiler_id, BUF_ALLOCED);
         goto DONE;
     }
     
@@ -530,12 +659,15 @@ void *MemMgr_Map(MemAllocBlock blocks[], int num_blocks)
     if (NOT_I(num_blocks,==,1) ||
         NOT_I(blocks[0].pixelFormat,==,PIXEL_FMT_PAGE) ||
         NOT_I(blocks[0].length & (PAGE_SIZE - 1),==,0) ||
+#ifdef __STUB_TILER__
+        NOT_I(MemMgr_IsMapped(blocks[0].ptr),==,0) ||
+#endif
         NOT_I((uint32_t)blocks[0].ptr & (PAGE_SIZE - 1),==,0))
         goto FAIL;
 
     /* ----- begin recoverable portion ----- */
     int ix;
-    uint32_t offset;
+    uint32_t tiler_id;
 
     /* allocate each buffer using tiler driver */
     for (ix = 0; ix < num_blocks; ix++)
@@ -545,10 +677,10 @@ void *MemMgr_Map(MemAllocBlock blocks[], int num_blocks)
     }
 
     /* map bufer into tiler space and register with tiler manager */
-    bufPtr = tiler_mmap(blks, num_blocks, &offset);
+    bufPtr = tiler_mmap(blks, num_blocks, &tiler_id);
     if (A_P(bufPtr,!=,0)) {
-        /* cache offset for buffer */
-        buf_cache_add(bufPtr, offset, BUF_MAPPED);
+        /* cache tiler ID for buffer */
+        buf_cache_add(bufPtr, tiler_id, BUF_MAPPED);
         goto DONE;
     }
 
@@ -657,7 +789,7 @@ bytes_t MemMgr_GetStride(void *ptr)
     if (!ptr) return R_UP(0);
     DLIST_MLOOP(bufs, ad, link) {
         int ix;
-        struct tiler_buf_info *buf = (struct tiler_buf_info *) ad->offset;
+        struct tiler_buf_info *buf = (struct tiler_buf_info *) ad->tiler_id;
         for (ix = 0; ix < buf->num_blocks; ix++)
         {
             if (ptr >= buf->blocks[ix].ptr &&
@@ -690,6 +822,7 @@ SSPtr TilerMem_VirtToPhys(void *ptr)
     return (SSPtr)ptr;
 #endif
 }
+
 /**
  * Internal Unit Test.  Tests the static methods of this library
  * 
@@ -736,5 +869,4 @@ void memmgr_internal_unit_test()
     blk.width = PAGE_SIZE * 6 / 10;
     A_I(def_size(&blk),==,30 * PAGE_SIZE);
 }
-
 

@@ -111,14 +111,27 @@
     T(maxmap_1D_test(1920 * 1080 * 2))\
     T(star_test(1000, 10))\
 
+/* this is defined in memmgr.c, but not exported as it is for internal 
+   use only */
+extern void memmgr_internal_unit_test();
+
 /**
- * Fills up a range of memory using a start address and start 
- * value. 
+ * This method fills up a range of memory using a start address
+ * and start value.  The method of filling ensures that 
+ * accidentally overlapping regions have minimal chances of 
+ * matching, even if the same starting value is used.  This is 
+ * because the difference between successive values varies as 
+ * such.  This series only repeats after 704189 values, so the 
+ * probability of a match for a range of at least 2 values is 
+ * less than 2*10^-11.
+ *  
+ * V(i + 1) - V(i) = { 1, 2, 3, ..., 65535, 2, 4, 6, 8 ..., 
+ * 65534, 3, 6, 9, 12, ..., 4, 8, 12, 16, ... } 
  * 
  * @author a0194118 (9/6/2009)
  * 
  * @param start   start value
- * @param bi      pointer to block info strucure
+ * @param block   pointer to block info strucure
  */
 void fill_mem(uint16_t start, MemAllocBlock *block)
 {
@@ -137,7 +150,7 @@ void fill_mem(uint16_t start, MemAllocBlock *block)
     }
     width *= def_bpp(block->pixelFormat);
 
-    // P("(%p,0x%lx*0x%lx,s=0x%lx)", block->ptr, width, height, stride);
+    // P("(%p,0x%x*0x%x,s=0x%x)", block->ptr, width, height, stride);
 
     A_I(width,<=,stride);
     while (height--)
@@ -159,15 +172,15 @@ void fill_mem(uint16_t start, MemAllocBlock *block)
 }
 
 /**
- * Fills up a range of memory using a start address and start 
- * value. 
+ * This verifies if a range of memory at a given address was 
+ * filled up using the start value.
  * 
  * @author a0194118 (9/6/2009)
  * 
  * @param start   start value
- * @param block      pointer to block info strucure
+ * @param block   pointer to block info strucure
  * 
- * @return int 
+ * @return 0 on success, non-0 error value on failure
  */
 int check_mem(uint16_t start, MemAllocBlock *block)
 {
@@ -192,8 +205,8 @@ int check_mem(uint16_t start, MemAllocBlock *block)
         for (i = 0; i < width; i += sizeof(uint16_t))
         {
             if (*ptr++ != start) {
-                DP("assert: val[%lu,%lu] (=0x%x) != 0x%x", r, i, *--ptr, start);
-                return 1;
+                DP("assert: val[%u,%u] (=0x%x) != 0x%x", r, i, *--ptr, start);
+                return MEMMGR_ERR_GENERIC;
             }
             start += delta;
             delta += step;
@@ -203,15 +216,35 @@ int check_mem(uint16_t start, MemAllocBlock *block)
         while (i < stride)
         {
             if (*ptr++) {
-                DP("assert: val[%lu,%lu] (=0x%x) != 0", r, i, *--ptr);
-                return 1;
+                DP("assert: val[%u,%u] (=0x%x) != 0", r, i, *--ptr);
+                return MEMMGR_ERR_GENERIC;
             }
             i += sizeof(uint16_t);
         }
     }
-    return 0;
+    return MEMMGR_ERR_NONE;
 }
 
+/**
+ * This method allocates a 1D tiled buffer of the given length 
+ * and stride using MemMgr_Alloc.  If successful, it checks 
+ * that the block information was updated with the pointer to 
+ * the block.  Additionally, it verifies the correct return 
+ * values for MemMgr_IsMapped, MemMgr_Is1DBlock, 
+ * MemMgr_Is2DBlock, MemMgr_GetStride, TilerMem_GetStride.  It 
+ * also verifies TilerMem_VirtToPhys using an internally stored 
+ * value of the ssptr. If any of these verifications fail, the 
+ * buffer is freed.  Otherwise, it is filled using the given 
+ * start value.
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param length   Buffer length
+ * @param stride   Buffer stride
+ * @param val      Fill start value
+ * 
+ * @return pointer to the allocated buffer, or NULL on failure
+ */
 void *alloc_1D(bytes_t length, bytes_t stride, uint16_t val)
 {
     MemAllocBlock block;
@@ -239,6 +272,21 @@ void *alloc_1D(bytes_t length, bytes_t stride, uint16_t val)
     return bufPtr;
 }
 
+/**
+ * This method frees a 1D tiled buffer.  The given length, 
+ * stride and start values are used to verify that the buffer is
+ * still correctly filled.  In the event of any errors, the 
+ * error value is returned. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param length   Buffer length 
+ * @param stride   Buffer stride
+ * @param val      Fill start value
+ * @param bufPtr   Pointer to the allocated buffer 
+ *  
+ * @return 0 on success, non-0 error value on failure
+ */
 int free_1D(bytes_t length, bytes_t stride, uint16_t val, void *bufPtr)
 {
     MemAllocBlock block;
@@ -254,6 +302,28 @@ int free_1D(bytes_t length, bytes_t stride, uint16_t val, void *bufPtr)
     return ret;
 }
 
+/**
+ * This method allocates a 2D tiled buffer of the given width, 
+ * height, stride and pixel format using 
+ * MemMgr_Alloc. If successful, it checks that the block 
+ * information was updated with the pointer to the block. 
+ * Additionally, it verifies the correct return values for 
+ * MemMgr_IsMapped, MemMgr_Is1DBlock, MemMgr_Is2DBlock, 
+ * MemMgr_GetStride, TilerMem_GetStride.  It also verifies 
+ * TilerMem_VirtToPhys using an internally stored value of the 
+ * ssptr. If any of these verifications fail, the buffer is 
+ * freed.  Otherwise, it is filled using the given start value. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param width    Buffer width
+ * @param height   Buffer height
+ * @param fmt      Pixel format
+ * @param stride   Buffer stride
+ * @param val      Fill start value
+ * 
+ * @return pointer to the allocated buffer, or NULL on failure
+ */
 void *alloc_2D(pixels_t width, pixels_t height, pixel_fmt_t fmt, bytes_t stride,
                uint16_t val)
 {
@@ -288,6 +358,23 @@ void *alloc_2D(pixels_t width, pixels_t height, pixel_fmt_t fmt, bytes_t stride,
     return bufPtr;
 }
 
+/**
+ * This method frees a 2D tiled buffer.  The given width, 
+ * height, pixel format, stride and start values are used to 
+ * verify that the buffer is still correctly filled.  In the 
+ * event of any errors, the error value is returned. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param width    Buffer width
+ * @param height   Buffer height
+ * @param fmt      Pixel format
+ * @param stride   Buffer stride
+ * @param val      Fill start value
+ * @param bufPtr   Pointer to the allocated buffer 
+ *  
+ * @return 0 on success, non-0 error value on failure
+ */
 int free_2D(pixels_t width, pixels_t height, pixel_fmt_t fmt, bytes_t stride,
             uint16_t val, void *bufPtr)
 {
@@ -305,6 +392,26 @@ int free_2D(pixels_t width, pixels_t height, pixel_fmt_t fmt, bytes_t stride,
     return ret;
 }
 
+/**
+ * This method allocates an NV12 tiled buffer of the given width
+ * and height using MemMgr_Alloc. If successful, it checks that
+ * the block informations were updated with the pointers to the 
+ * individual blocks. Additionally, it verifies the correct 
+ * return values for MemMgr_IsMapped, MemMgr_Is1DBlock, 
+ * MemMgr_Is2DBlock, MemMgr_GetStride, TilerMem_GetStride for 
+ * both blocks. It also verifies TilerMem_VirtToPhys using an 
+ * internally stored values of the ssptr. If any of these 
+ * verifications fail, the buffer is freed.  Otherwise, it is 
+ * filled using the given start value. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param width    Buffer width
+ * @param height   Buffer height
+ * @param val      Fill start value
+ * 
+ * @return pointer to the allocated buffer, or NULL on failure
+ */
 void *alloc_NV12(pixels_t width, pixels_t height, uint16_t val)
 {
     MemAllocBlock blocks[2];
@@ -350,6 +457,21 @@ void *alloc_NV12(pixels_t width, pixels_t height, uint16_t val)
     return bufPtr;
 }
 
+/**
+ * This method frees an NV12 tiled buffer.  The given width, 
+ * height and start values are used to verify that the buffer is
+ * still correctly filled.  In the event of any errors, the 
+ * error value is returned. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param width    Buffer width
+ * @param height   Buffer height
+ * @param val      Fill start value
+ * @param bufPtr   Pointer to the allocated buffer 
+ *  
+ * @return 0 on success, non-0 error value on failure
+ */
 int free_NV12(pixels_t width, pixels_t height, uint16_t val, void *bufPtr)
 {
     MemAllocBlock blocks[2];
@@ -372,6 +494,30 @@ int free_NV12(pixels_t width, pixels_t height, uint16_t val, void *bufPtr)
     return ret;
 }
 
+/**
+ * This method maps a preallocated 1D buffer of the given length 
+ * and stride into tiler space using MemMgr_Map.  The mapped 
+ * address must differ from the supplied address is successful. 
+ * Moreover, it checks that the block information was 
+ * updated with the pointer to the block. Additionally, it 
+ * verifies the correct return values for MemMgr_IsMapped, 
+ * MemMgr_Is1DBlock, MemMgr_Is2DBlock, MemMgr_GetStride, 
+ * TilerMem_GetStride.  It also verifies TilerMem_VirtToPhys 
+ * using an internally stored value of the ssptr. If any of 
+ * these verifications fail, the buffer is unmapped. Otherwise,
+ * the original buffer is filled using the given start value.
+ *  
+ * :TODO: how do we verify the mapping? 
+ *  
+ * @author a0194118 (9/7/2009)
+ *  
+ * @param dataPtr  Pointer to the allocated buffer 
+ * @param length   Buffer length
+ * @param stride   Buffer stride
+ * @param val      Fill start value
+ * 
+ * @return pointer to the mapped buffer, or NULL on failure
+ */
 void *map_1D(void *dataPtr, bytes_t length, bytes_t stride, uint16_t val)
 {
     MemAllocBlock block;
@@ -385,7 +531,8 @@ void *map_1D(void *dataPtr, bytes_t length, bytes_t stride, uint16_t val)
     void *bufPtr = MemMgr_Map(&block, 1);
     CHK_P(bufPtr,==,block.ptr);
     if (bufPtr) {
-        if (NOT_I(MemMgr_IsMapped(bufPtr),!=,0) ||
+        if (NOT_P(bufPtr,!=,dataPtr) ||
+            NOT_I(MemMgr_IsMapped(bufPtr),!=,0) ||
             NOT_I(MemMgr_Is1DBlock(bufPtr),!=,0) ||
             NOT_I(MemMgr_Is2DBlock(bufPtr),==,0) ||
             NOT_I(MemMgr_GetStride(bufPtr),==,block.stride) ||
@@ -401,6 +548,24 @@ void *map_1D(void *dataPtr, bytes_t length, bytes_t stride, uint16_t val)
     return bufPtr;
 }
 
+/**
+ * This method unmaps a 1D tiled buffer.  The given data 
+ * pointer, length, stride and start values are used to verify 
+ * that the buffer is still correctly filled.  In the event of 
+ * any errors, the error value is returned. 
+ *  
+ * :TODO: how do we verify the mapping? 
+ *  
+ * @author a0194118 (9/7/2009)
+ *  
+ * @param dataPtr  Pointer to the preallocated buffer 
+ * @param length   Buffer length 
+ * @param stride   Buffer stride
+ * @param val      Fill start value
+ * @param bufPtr   Pointer to the mapped buffer 
+ *  
+ * @return 0 on success, non-0 error value on failure
+ */
 int unmap_1D(void *dataPtr, bytes_t length, bytes_t stride, uint16_t val, void *bufPtr)
 {
     MemAllocBlock block;
@@ -415,9 +580,20 @@ int unmap_1D(void *dataPtr, bytes_t length, bytes_t stride, uint16_t val, void *
     return ret;
 }
 
+/**
+ * This method tests the allocation and freeing of a 1D tiled 
+ * buffer. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param length   Buffer length
+ * @param stride   Buffer stride
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int alloc_1D_test(bytes_t length, bytes_t stride)
 {
-    printf("Allocate & Free %lub 1D buffer\n", length);
+    printf("Allocate & Free %ub 1D buffer\n", length);
 
     uint16_t val = (uint16_t) rand();
     void *ptr = alloc_1D(length, stride, val);
@@ -426,9 +602,21 @@ int alloc_1D_test(bytes_t length, bytes_t stride)
     return res;
 }
 
+/**
+ * This method tests the allocation and freeing of a 2D tiled 
+ * buffer. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param width    Buffer width
+ * @param height   Buffer height
+ * @param fmt      Pixel format
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int alloc_2D_test(pixels_t width, pixels_t height, pixel_fmt_t fmt)
 {
-    printf("Allocate & Free %ux%ux%lub 1D buffer\n", width, height, def_bpp(fmt));
+    printf("Allocate & Free %ux%ux%ub 1D buffer\n", width, height, def_bpp(fmt));
 
     uint16_t val = (uint16_t) rand();
     void *ptr = alloc_2D(width, height, fmt, 0, val);
@@ -437,6 +625,17 @@ int alloc_2D_test(pixels_t width, pixels_t height, pixel_fmt_t fmt)
     return res;
 }
 
+/**
+ * This method tests the allocation and freeing of an NV12 tiled
+ * buffer. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param width    Buffer width
+ * @param height   Buffer height
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int alloc_NV12_test(pixels_t width, pixels_t height)
 {
     printf("Allocate & Free %ux%u NV12 buffer\n", width, height);
@@ -448,10 +647,20 @@ int alloc_NV12_test(pixels_t width, pixels_t height)
     return res;
 }
 
+/**
+ * This method tests the mapping and unmapping of a 1D buffer. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param length   Buffer length
+ * @param stride   Buffer stride
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int map_1D_test(bytes_t length, bytes_t stride)
 {
     length = (length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
-    printf("Mapping and UnMapping 0x%lxb 1D buffer\n", length);
+    printf("Mapping and UnMapping 0x%xb 1D buffer\n", length);
 
     /* allocate aligned buffer */
     void *buffer = malloc(length + PAGE_SIZE - 1);
@@ -466,156 +675,166 @@ int map_1D_test(bytes_t length, bytes_t stride)
 
 #define MAX_ALLOCS 10
 
+/**
+ * This method tests the allocation and freeing of a number of 
+ * 1D tiled buffers (up to MAX_ALLOCS)
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param length   Buffer length
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int maxalloc_1D_test(bytes_t length)
 {
-    printf("Allocate & Free max # of %lub 1D buffers\n", length);
+    printf("Allocate & Free max # of %ub 1D buffers\n", length);
 
     struct data {
         uint16_t val;
         void    *bufPtr;
-        struct data *next, *last, *me;
-    } head, *dp, *dp2;
+    } *mem;
 
     /* allocate as many buffers as we can */
-    DLIST_INIT(head);
-    void *ptr;
-    int num_bufs = 0;
-    do
+    mem = NEWN(struct data, MAX_ALLOCS);
+    void *ptr = (void *)mem;
+    int ix, res = 0;
+    for (ix = 0; ptr && ix < MAX_ALLOCS; ix++)
     {
         uint16_t val = (uint16_t) rand();
         ptr = alloc_1D(length, 0, val);
-        dp = NEW(struct data);
-        if (ptr && dp)
+        if (ptr)
         {
-            dp->val = val;
-            dp->bufPtr = ptr;
-            DLIST_ADD_BEFORE(head, dp, *dp);
-            num_bufs++;
+            mem[ix].val = val;
+            mem[ix].bufPtr = ptr;
         }
-        else
-        {
-            FREE(dp);
-            if (ptr) free_1D(length, 0, val, ptr);
-        }
-        
-    } while (ptr && num_bufs < MAX_ALLOCS);
-
-    P(":: Allocated %d buffers", num_bufs);
-
-    int res = 0;
-    DLIST_SAFE_LOOP(head, dp, dp2) {
-        ERR_ADD(res, free_1D(length, 0, dp->val, dp->bufPtr));
-        DLIST_REMOVE(*dp);
     }
+
+    P(":: Allocated %d buffers", ix);
+
+    while (ix--)
+    {
+        ERR_ADD(res, free_1D(length, 0, mem[ix].val, mem[ix].bufPtr));
+    }
+    FREE(mem);
     return res;
 }
 
+/**
+ * This method tests the allocation and freeing of a number of 
+ * 2D tiled buffers (up to MAX_ALLOCS) 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param width    Buffer width
+ * @param height   Buffer height
+ * @param fmt      Pixel format
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int maxalloc_2D_test(pixels_t width, pixels_t height, pixel_fmt_t fmt)
 {
-    printf("Allocate & Free max # of %ux%ux%lub 1D buffers\n", width, height, def_bpp(fmt));
+    printf("Allocate & Free max # of %ux%ux%ub 1D buffers\n", width, height, def_bpp(fmt));
 
     struct data {
-        uint16_t val;
-        void    *bufPtr;
-        struct data *next, *last, *me;
-    } head, *dp, *dp2;
+        uint16_t  val;
+        void     *bufPtr;
+    } *mem;
 
     /* allocate as many buffers as we can */
-    DLIST_INIT(head);
-    void *ptr;
-    int num_bufs = 0;
-    do
+    mem = NEWN(struct data, MAX_ALLOCS);
+    void *ptr = (void *)mem;
+    int ix, res = 0;
+    for (ix = 0; ptr && ix < MAX_ALLOCS; ix++)
     {
         uint16_t val = (uint16_t) rand();
         ptr = alloc_2D(width, height, fmt, 0, val);
-        dp = NEW(struct data);
-        if (ptr && dp)
+        if (ptr)
         {
-            dp->val = val;
-            dp->bufPtr = ptr;
-            DLIST_ADD_BEFORE(head, dp, *dp);
-            num_bufs++;
+            mem[ix].val = val;
+            mem[ix].bufPtr = ptr;
         }
-        else
-        {
-            FREE(dp);
-            if (ptr) free_2D(width, height, fmt, 0, val, ptr);
-        }
-
-    } while (ptr && num_bufs < MAX_ALLOCS);
-
-    P(":: Allocated %d buffers", num_bufs);
-
-    int res = 0;
-    DLIST_SAFE_LOOP(head, dp, dp2) {
-        ERR_ADD(res, free_2D(width, height, fmt, 0, dp->val, dp->bufPtr));
-        DLIST_REMOVE(*dp);
     }
+
+    P(":: Allocated %d buffers", ix);
+
+    while (ix--)
+    {
+        ERR_ADD(res, free_2D(width, height, fmt, 0, mem[ix].val, mem[ix].bufPtr));
+    }
+    FREE(mem);
     return res;
 }
 
+/**
+ * This method tests the allocation and freeing of a number of 
+ * NV12 tiled buffers (up to MAX_ALLOCS) 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param width    Buffer width
+ * @param height   Buffer height
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int maxalloc_NV12_test(pixels_t width, pixels_t height)
 {
     printf("Allocate & Free max # of %ux%u NV12 buffers\n", width, height);
 
     struct data {
-        uint16_t val;
-        void    *bufPtr;
-        struct data *next, *last, *me;
-    } head, *dp, *dp2;
+        uint16_t     val;
+        void        *bufPtr;
+    } *mem;
 
     /* allocate as many buffers as we can */
-    DLIST_INIT(head);
-    void *ptr;
-    int num_bufs = 0;
-    do
+    mem = NEWN(struct data, MAX_ALLOCS);
+    void *ptr = (void *)mem;
+    int ix, res = 0;
+    for (ix = 0; ptr && ix < MAX_ALLOCS; ix++)
     {
         uint16_t val = (uint16_t) rand();
         ptr = alloc_NV12(width, height, val);
-        dp = NEW(struct data);
-        if (ptr && dp)
+        if (ptr)
         {
-            dp->val = val;
-            dp->bufPtr = ptr;
-            DLIST_ADD_BEFORE(head, dp, *dp);
-            num_bufs++;
+            mem[ix].val = val;
+            mem[ix].bufPtr = ptr;
         }
-        else
-        {
-            FREE(dp);
-            if (ptr) free_NV12(width, height, val, ptr);
-        }
-
-    } while (ptr && num_bufs < MAX_ALLOCS);
-
-    P(":: Allocated %d buffers", num_bufs);
-
-    int res = 0;
-    DLIST_SAFE_LOOP(head, dp, dp2) {
-        ERR_ADD(res, free_NV12(width, height, dp->val, dp->bufPtr));
-        DLIST_REMOVE(*dp);
     }
+
+    P(":: Allocated %d buffers", ix);
+
+    while (ix--)
+    {
+        ERR_ADD(res, free_NV12(width, height, mem[ix].val, mem[ix].bufPtr));
+    }
+    FREE(mem);
     return res;
 }
 
+/**
+ * This method tests the mapping and unnapping of a number of 
+ * 1D buffers (up to MAX_ALLOCS)
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param length   Buffer length
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int maxmap_1D_test(bytes_t length)
 {
     length = (length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
-    printf("Map & UnMap max # of %lxb 1D buffers\n", length);
+    printf("Map & UnMap max # of %xb 1D buffers\n", length);
 
     struct data {
         uint16_t val;
-        void    *bufPtr;
-        void    *buffer;
-        void    *dataPtr;
-        struct data *next, *last, *me;
-    } head, *dp, *dp2;
+        void    *bufPtr, *buffer, *dataPtr;
+    } *mem;
 
-    /* allocate as many buffers as we can */
-    DLIST_INIT(head);
-    void *ptr;
-    int num_bufs = 0;
-    do
+    /* map as many buffers as we can */
+    mem = NEWN(struct data, MAX_ALLOCS);
+    void *ptr = (void *)mem;
+    int ix, res = 0;
+    for (ix = 0; ptr && ix < MAX_ALLOCS; ix++)
     {
         /* allocate aligned buffer */
         void *ptr = malloc(length + PAGE_SIZE - 1);
@@ -625,40 +844,57 @@ int maxmap_1D_test(bytes_t length)
             void *dataPtr = (void *)(((uint32_t)buffer + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1));
             uint16_t val = (uint16_t) rand();
             ptr = map_1D(dataPtr, length, 0, val);
-            dp = NEW(struct data);
-            if (ptr && dp)
+            if (ptr)
             {
-                dp->val = val;
-                dp->bufPtr = ptr;
-                dp->buffer = buffer;
-                dp->dataPtr = dataPtr;
-                DLIST_ADD_BEFORE(head, dp, *dp);
-                num_bufs++;
+                mem[ix].val = val;
+                mem[ix].bufPtr = ptr;
+                mem[ix].buffer = buffer;
+                mem[ix].dataPtr = dataPtr;
             }
             else
             {
-                FREE(dp);
                 FREE(buffer);
-                if (ptr) unmap_1D(dataPtr, length, 0, val, ptr);
             }
         }
-    } while (ptr && num_bufs < MAX_ALLOCS);
+    }
 
-    P(":: Mapped %d buffers", num_bufs);
+    P(":: Mapped %d buffers", ix);
 
-    int res = 0;
-    DLIST_SAFE_LOOP(head, dp, dp2) {
-        ERR_ADD(res, unmap_1D(dp->dataPtr, length, 0, dp->val, dp->bufPtr));
-        FREE(dp->buffer);
-        DLIST_REMOVE(*dp);
+    while (ix--)
+    {
+        ERR_ADD(res, unmap_1D(mem[ix].dataPtr, length, 0, mem[ix].val, mem[ix].bufPtr));
+        FREE(mem[ix].buffer);
     }
     return res;
 }
 
+/**
+ * This stress tests allocates/maps/frees/unmaps buffers at 
+ * least num_ops times.  The test maintains a set of slots that 
+ * are initially NULL.  For each operation, a slot is randomly 
+ * selected.  If the slot is not used, it is filled randomly 
+ * with a 1D, 2D, NV12 or mapped buffer.  If it is used, the 
+ * slot is cleared by freeing/unmapping the buffer already 
+ * there.  The buffers are filled on alloc/map and this is 
+ * checked on free/unmap to verify that there was no memory 
+ * corruption.  Failed allocation and maps are ignored as we may
+ * run out of memory.  The return value is the first error code 
+ * encountered, or 0 on success.
+ *  
+ * This test sets the seed so that it produces reproducible 
+ * results. 
+ *  
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param num_ops    Number of operations to perform
+ * @param num_slots  Number of slots to maintain
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int star_test(uint32_t num_ops, uint16_t num_slots)
 {
     printf("Random set of %d Allocs/Maps and Frees/UnMaps for %d slots\n", num_ops, num_slots);
-    srand(0xFB72316A);
+    srand(0x4B72316A);
     struct data {
         int      op;
         uint16_t val;
@@ -777,6 +1013,15 @@ int star_test(uint32_t num_ops, uint16_t num_slots)
     return res;
 }
 
+#define NEGA(exp) E_ { void *__ptr__ = A_P(exp,==,NULL); if (__ptr__) MemMgr_Free(__ptr__); __ptr__ != NULL; } _E
+
+/**
+ * Performs negative tests for MemMgr_Alloc.
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int neg_alloc_tests()
 {
     printf("Negative Alloc tests\n");
@@ -793,34 +1038,34 @@ int neg_alloc_tests()
         P("/* bad pixel format */");
         blk->pixelFormat = PIXEL_FMT_MIN - 1;
         blk->length = PAGE_SIZE;
-        ret |= NOT_I(MemMgr_Alloc(block, num_blocks),==,NULL);
+        ret |= NEGA(MemMgr_Alloc(block, num_blocks));
         blk->pixelFormat = PIXEL_FMT_MAX + 1;
-        ret |= NOT_I(MemMgr_Alloc(block, num_blocks),==,NULL);
+        ret |= NEGA(MemMgr_Alloc(block, num_blocks));
     
         P("/* bad 1D stride */");
         blk->pixelFormat = PIXEL_FMT_PAGE;
         blk->stride = PAGE_SIZE - 1;
-        ret |= NOT_I(MemMgr_Alloc(block, num_blocks),==,NULL);
+        ret |= NEGA(MemMgr_Alloc(block, num_blocks));
     
         P("/* 0 1D length */");
         blk->length = blk->stride = 0;
-        ret |= NOT_I(MemMgr_Alloc(block, num_blocks),==,NULL);
+        ret |= NEGA(MemMgr_Alloc(block, num_blocks));
     
         P("/* bad 2D stride */");
         blk->pixelFormat = PIXEL_FMT_8BIT;
         blk->width = PAGE_SIZE - 1;
         blk->stride = PAGE_SIZE - 1;
         blk->height = 16;
-        ret |= NOT_I(MemMgr_Alloc(block, num_blocks),==,NULL);
+        ret |= NEGA(MemMgr_Alloc(block, num_blocks));
         
         P("/* bad 2D width */");    
         blk->stride = blk->width = 0;
-        ret |= NOT_I(MemMgr_Alloc(block, num_blocks),==,NULL);
+        ret |= NEGA(MemMgr_Alloc(block, num_blocks));
 
         P("/* bad 2D height */");    
         blk->height = 0;
         blk->width = 16;
-        ret |= NOT_I(MemMgr_Alloc(block, num_blocks),==,NULL);
+        ret |= NEGA(MemMgr_Alloc(block, num_blocks));
         
         /* good 2D block */
         blk->height = 16;
@@ -829,11 +1074,18 @@ int neg_alloc_tests()
     return ret;
 }
 
+/**
+ * Performs negative tests for MemMgr_Free.
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int neg_free_tests()
 {
     printf("Negative Free tests\n");
 
-    void *ptr = alloc_1D(PAGE_SIZE, 0, 0);
+    void *ptr = alloc_2D(2500, 10, PIXEL_FMT_16BIT, 2 * PAGE_SIZE, 0);
     int ret = 0;
 
     MemMgr_Free(ptr);
@@ -858,6 +1110,15 @@ int neg_free_tests()
     return ret;
 }
 
+#define NEGM(exp) E_ { void *__ptr__ = A_P(exp,==,NULL); if (__ptr__) MemMgr_UnMap(__ptr__); __ptr__ != NULL; } _E
+
+/**
+ * Performs negative tests for MemMgr_Map.
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int neg_map_tests()
 {
     printf("Negative Map tests\n");
@@ -874,65 +1135,81 @@ int neg_map_tests()
         P("/* bad pixel format */");
         blk->pixelFormat = PIXEL_FMT_MIN - 1;
         blk->length = PAGE_SIZE;
-        ret |= NOT_I(MemMgr_Map(block, num_blocks),==,NULL);
+        ret |= NEGM(MemMgr_Map(block, num_blocks));
         blk->pixelFormat = PIXEL_FMT_MAX + 1;
-        ret |= NOT_I(MemMgr_Map(block, num_blocks),==,NULL);
+        ret |= NEGM(MemMgr_Map(block, num_blocks));
     
         P("/* bad 1D stride */");
         blk->pixelFormat = PIXEL_FMT_PAGE;
         blk->stride = PAGE_SIZE - 1;
-        ret |= NOT_I(MemMgr_Map(block, num_blocks),==,NULL);
+        ret |= NEGM(MemMgr_Map(block, num_blocks));
     
         P("/* 0 1D length */");
         blk->length = blk->stride = 0;
-        ret |= NOT_I(MemMgr_Map(block, num_blocks),==,NULL);
+        ret |= NEGM(MemMgr_Map(block, num_blocks));
     
         P("/* bad 2D stride */");
         blk->pixelFormat = PIXEL_FMT_8BIT;
         blk->width = PAGE_SIZE - 1;
         blk->stride = PAGE_SIZE - 1;
         blk->height = 16;
-        ret |= NOT_I(MemMgr_Map(block, num_blocks),==,NULL);
+        ret |= NEGM(MemMgr_Map(block, num_blocks));
         
         P("/* bad 2D width */");    
         blk->stride = blk->width = 0;
-        ret |= NOT_I(MemMgr_Map(block, num_blocks),==,NULL);
+        ret |= NEGM(MemMgr_Map(block, num_blocks));
 
         P("/* bad 2D height */");    
         blk->height = 0;
         blk->width = 16;
-        ret |= NOT_I(MemMgr_Map(block, num_blocks),==,NULL);
+        ret |= NEGM(MemMgr_Map(block, num_blocks));
         
         /* good 2D block */
         blk->height = 16;
     }
 
     P("/* 2 buffers */");
-    ret |= NOT_I(MemMgr_Map(block, 2),==,NULL);
+    ret |= NEGM(MemMgr_Map(block, 2));
 
     P("/* 1 2D buffer */");
-    ret |= NOT_I(MemMgr_Map(block, 1),==,NULL);
+    ret |= NEGM(MemMgr_Map(block, 1));
 
     P("/* 1 1D buffer with no address */");
     block[0].pixelFormat = PIXEL_FMT_PAGE;
     block[0].length = 2 * PAGE_SIZE;
     block[0].ptr = NULL;
-    ret |= NOT_I(MemMgr_Map(block, 1),==,NULL);
+    ret |= NEGM(MemMgr_Map(block, 1));
 
     P("/* 1 1D buffer with not aligned start address */");
     void *buffer = malloc(3 * PAGE_SIZE);
     void *dataPtr = (void *)(((uint32_t)buffer + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1));
     block[0].ptr = dataPtr + 3;
-    ret |= NOT_I(MemMgr_Map(block, 1),==,NULL);
+    ret |= NEGM(MemMgr_Map(block, 1));
 
     P("/* 1 1D buffer with not aligned length */");
     block[0].ptr = dataPtr;
     block[0].length -= 5;
-    ret |= NOT_I(MemMgr_Map(block, 1),==,NULL);
+    ret |= NEGM(MemMgr_Map(block, 1));
+
+    P("/* Mapping a tiled 1D buffer */");
+    void *ptr = alloc_1D(PAGE_SIZE * 2, 0, 0);
+    dataPtr = (void *)(((uint32_t)ptr + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1));
+    block[0].ptr = dataPtr;
+    block[0].length = PAGE_SIZE;
+    ret |= NEGM(MemMgr_Map(block, 1));
+
+    MemMgr_Free(ptr);
 
     return ret;
 }
 
+/**
+ * Performs negative tests for MemMgr_UnMap.
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int neg_unmap_tests()
 {
     printf("Negative Unmap tests\n");
@@ -962,6 +1239,13 @@ int neg_unmap_tests()
     return ret;
 }
 
+/**
+ * Performs negative tests for MemMgr_Is.. functions.
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
 int neg_check_tests()
 {
     printf("Negative Is... tests\n");
@@ -996,6 +1280,15 @@ int neg_check_tests()
     return ret;
 }
 
+/**
+ * Prints test result and returns summary result
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param res    Test result
+ * 
+ * @return 0 on success, 1 on failure
+ */
 int result(int res)
 {
     if (res)
@@ -1010,6 +1303,18 @@ int result(int res)
     }
 }
 
+/**
+ * Runs a specified test by id.  This function uses the TESTS 
+ * macros, and defines each T(test) to run a test starting from 
+ * id == 1, and then return the result. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param id   Test case id.
+ * 
+ * @return Summary result: 0 on success, 1 on failure, -1 on 
+ *         invalid test case.
+ */
 int test(int id)
 {
     int i = id;
@@ -1018,6 +1323,18 @@ int test(int id)
     return -1;
 }
 
+/**
+ * Main test function. Checks arguments for test case ranges, 
+ * runs tests and prints usage or test list if required. 
+ * 
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param argc   Number of arguments
+ * @param argv   Arguments
+ * 
+ * @return -1 on usage or test list, otherwise # of failed 
+ *         tests.
+ */
 int main(int argc, char **argv)
 {
     int start = 1, end = -1, res, failed = 0, succeeded = 0;
@@ -1033,7 +1350,7 @@ int main(int argc, char **argv)
     #define T(test) printf("% 3d - %s\n", ++i, #test);
         int i = 0;
         TESTS
-        return 0;
+        return -1;
     }
     /* single test */
     else if (argc == 2 && sscanf(argv[1], "%u%c", &res, &c) == 1)
