@@ -89,7 +89,7 @@
 /* function abort (return;)  Use as { RET; return; } */
 #define RET DP("out() ")
 /* generic function return */
-#define R(val,type,fmt) E_ { type i = (type) val; DP("out(" fmt ")", i); i; } _E
+#define R(val,type,fmt) E_ { type __val__ = (type) val; DP("out(" fmt ")", __val__); __val__; } _E
 #else
 #define IN
 #define OUT
@@ -122,14 +122,13 @@
 /* generic assertion check, A returns the value of exp, CHK return void */
 #ifdef __DEBUG_ASSERT__
 #define A(exp,cmp,val,type,fmt) E_ { \
-    type i = (type) (exp); type v = (type) (val); \
-    if (!(i cmp v)) DP("assert: %s (=" fmt ") !" #cmp " " fmt, #exp, i, v); \
-    i; \
+    type __exp__ = (type) (exp); type __val__ = (type) (val); \
+    if (!(__exp__ cmp __val__)) DP("assert: %s (=" fmt ") !" #cmp " " fmt, #exp, __exp__, __val__); \
+    __exp__; \
 } _E
 #define CHK(exp,cmp,val,type,fmt) S_ { \
-    type i = (type) (exp); type v = (type) (val); \
-    if (!(i cmp v)) DP("assert: %s (=" fmt ") !" #cmp " " fmt, #exp, i, v); \
-    i; \
+    type __exp__ = (type) (exp); type __val__ = (type) (val); \
+    if (!(__exp__ cmp __val__)) DP("assert: %s (=" fmt ") !" #cmp " " fmt, #exp, __exp__, __val__); \
 } _S
 #else
 #define A(exp,cmp,val,type,fmt) (exp)
@@ -144,13 +143,12 @@
 #define CHK_L(exp,cmp,val) CHK(exp,cmp,val,long,"%ld")
 #define CHK_P(exp,cmp,val) CHK(exp,cmp,val,void *,"%p")
 
-
 /* generic assertion check, returns true iff assertion fails */
 #ifdef __DEBUG_ASSERT__
 #define NOT(exp,cmp,val,type,fmt) E_ { \
-    type i = (type) (exp); type v = (type) (val); \
-    if (!(i cmp v)) DP("assert: %s (=" fmt ") !" #cmp " " fmt, #exp, i, v); \
-    !(i cmp v); \
+    type __exp__ = (type) (exp); type __val__ = (type) (val); \
+    if (!(__exp__ cmp __val__)) DP("assert: %s (=" fmt ") !" #cmp " " fmt, #exp, __exp__, __val__); \
+    !(__exp__ cmp __val__); \
 } _E
 #else
 #define NOT(exp,cmp,val,type,fmt) (!((exp) cmp (val)))
@@ -161,6 +159,13 @@
 #define NOT_L(exp,cmp,val) NOT(exp,cmp,val,long,"%ld")
 #define NOT_P(exp,cmp,val) NOT(exp,cmp,val,void *,"%p")
 
+/* error propagation macros - these macros ensure evaluation of the expression
+   even if there was a prior error */
+
+/* new error is accumulated into error */
+#define ERR_ADD(err, exp) S_ { int __error__ = A_I(exp,==,0); err = err ? err : __error__; } _S
+/* new error overwrites old error */
+#define ERR_OVW(err, exp) S_ { int __error__ = A_I(exp,==,0); err = __error__ ? __error__ : err; } _S
 
 /* allocation macro */
 #define NEW(type)    (type*)calloc(1, sizeof(type))
@@ -168,6 +173,9 @@
 
 /* free variable and set it to NULL */
 #define FREE(var)    S_ { free(var); var = NULL; } _S
+
+/* clear variable */
+#define ZERO(var)    memset(&(var), 0, sizeof(var))
 
 /* 
 
