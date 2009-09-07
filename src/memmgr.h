@@ -248,7 +248,7 @@ bool MemMgr_IsMapped(void *ptr);
  *         the virtual address is mapped to the page-mode area
  *         of the tiler space.
  */
-bool MemMgr_Is1DBuffer(void *ptr);
+bool MemMgr_Is1DBlock(void *ptr);
 
 /**
  * Checks if a given virtual address lies in a 2D buffer. 
@@ -269,7 +269,7 @@ bool MemMgr_Is1DBuffer(void *ptr);
  *         the virtual address is mapped to any area of the
  *         tiler space other than page mode.
  */
-bool MemMgr_Is2DBuffer(void *ptr);
+bool MemMgr_Is2DBlock(void *ptr);
 
 /**
  * Returns the stride corresponding to a virtual address.  For

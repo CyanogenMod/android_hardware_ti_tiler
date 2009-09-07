@@ -102,7 +102,7 @@
 /* pointer return */
 #define R_P(val) R(val,void *,"%p")
 /* long return */
-#define R_UP(val) R(val,long,"%lx")
+#define R_UP(val) R(val,long,"0x%lx")
 
 /* ---------- Assertion Debug Macros ---------- */
 
@@ -119,28 +119,37 @@
  *     j is 25
  *  
  */
-/* generic assertion check, returns the value of exp */
+/* generic assertion check, A returns the value of exp, CHK return void */
 #ifdef __DEBUG_ASSERT__
 #define A(exp,cmp,val,type,fmt) E_ { \
     type i = (type) (exp); type v = (type) (val); \
-    if (!(i cmp v)) DP("assert: " #exp " (=" fmt ") !" #cmp " " fmt, i, v); \
+    if (!(i cmp v)) DP("assert: %s (=" fmt ") !" #cmp " " fmt, #exp, i, v); \
     i; \
 } _E
+#define CHK(exp,cmp,val,type,fmt) S_ { \
+    type i = (type) (exp); type v = (type) (val); \
+    if (!(i cmp v)) DP("assert: %s (=" fmt ") !" #cmp " " fmt, #exp, i, v); \
+    i; \
+} _S
 #else
 #define A(exp,cmp,val,type,fmt) (exp)
+#define CHK(exp,cmp,val,type,fmt)
 #endif
 
 /* typed assertions */
 #define A_I(exp,cmp,val) A(exp,cmp,val,int,"%d")
 #define A_L(exp,cmp,val) A(exp,cmp,val,long,"%ld")
 #define A_P(exp,cmp,val) A(exp,cmp,val,void *,"%p")
+#define CHK_I(exp,cmp,val) CHK(exp,cmp,val,int,"%d")
+#define CHK_L(exp,cmp,val) CHK(exp,cmp,val,long,"%ld")
+#define CHK_P(exp,cmp,val) CHK(exp,cmp,val,void *,"%p")
 
 
 /* generic assertion check, returns true iff assertion fails */
 #ifdef __DEBUG_ASSERT__
 #define NOT(exp,cmp,val,type,fmt) E_ { \
     type i = (type) (exp); type v = (type) (val); \
-    if (!(i cmp v)) DP("assert: " #exp " (=" fmt ") !" #cmp " " fmt, i, v); \
+    if (!(i cmp v)) DP("assert: %s (=" fmt ") !" #cmp " " fmt, #exp, i, v); \
     !(i cmp v); \
 } _E
 #else
