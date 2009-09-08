@@ -141,8 +141,8 @@ static int dec_ref()
 static bytes_t def_size(tiler_block_info *blk)
 {
     return (blk->fmt == PIXEL_FMT_PAGE ?
-            blk->length :
-            blk->height * def_stride(blk->width * def_bpp(blk->fmt)));
+            blk->dim.len :
+            blk->dim.area.height * def_stride(blk->dim.area.width * def_bpp(blk->fmt)));
 }
 
 /**
@@ -200,12 +200,12 @@ static SSPtr tiler_alloc(struct tiler_block_info *blk)
     blk->ptr = NULL;
     if (blk->fmt == PIXEL_FMT_PAGE)
     {
-        blk->ssptr = TilerMgr_PageModeAlloc(blk->length);
+        blk->ssptr = TilerMgr_PageModeAlloc(blk->dim.len);
     }
     else
     {
-        blk->ssptr = TilerMgr_Alloc(blk->fmt, blk->width, blk->height);
-        blk->stride = def_stride(blk->width * def_bpp(blk->fmt));
+        blk->ssptr = TilerMgr_Alloc(blk->fmt, blk->dim.area.width, blk->dim.area.height);
+        blk->stride = def_stride(blk->dim.area.width * def_bpp(blk->fmt));
     }
     return blk->ssptr;
 }
@@ -244,7 +244,7 @@ static SSPtr tiler_map(struct tiler_block_info *blk)
 {
     if (blk->fmt == PIXEL_FMT_PAGE)
     {
-        blk->ssptr = TilerMgr_Map(blk->ptr, blk->length);
+        blk->ssptr = TilerMgr_Map(blk->ptr, blk->dim.len);
     }
     else
     {
@@ -466,17 +466,17 @@ static int check_block(tiler_block_info *blk, bool is_page_sized)
     {   /* check 1D buffers */
 
         /* length must be multiple of stride if stride > 0 */
-        if (NOT_I(blk->length,>,0) ||
-            (blk->stride && NOT_I(blk->length % blk->stride,==,0)))
+        if (NOT_I(blk->dim.len,>,0) ||
+            (blk->stride && NOT_I(blk->dim.len % blk->stride,==,0)))
             return MEMMGR_ERR_GENERIC;
     }
     else 
     {   /* check 2D buffers */
    
         /* check width, height and stride (must be the default stride or 0) */
-        bytes_t stride = def_stride(blk->width * def_bpp(blk->fmt));
-        if (NOT_I(blk->width,>,0) ||
-            NOT_I(blk->height,>,0) ||
+        bytes_t stride = def_stride(blk->dim.area.width * def_bpp(blk->fmt));
+        if (NOT_I(blk->dim.area.width,>,0) ||
+            NOT_I(blk->dim.area.height,>,0) ||
             (blk->stride && NOT_I(blk->stride,==,stride)))
             return MEMMGR_ERR_GENERIC;
     }
@@ -658,7 +658,7 @@ void *MemMgr_Map(MemAllocBlock blocks[], int num_blocks)
     /* we only map 1 page aligned 1D buffer for now */
     if (NOT_I(num_blocks,==,1) ||
         NOT_I(blocks[0].pixelFormat,==,PIXEL_FMT_PAGE) ||
-        NOT_I(blocks[0].length & (PAGE_SIZE - 1),==,0) ||
+        NOT_I(blocks[0].dim.len & (PAGE_SIZE - 1),==,0) ||
 #ifdef __STUB_TILER__
         NOT_I(MemMgr_IsMapped(blocks[0].ptr),==,0) ||
 #endif
@@ -854,19 +854,19 @@ void memmgr_internal_unit_test()
     /* def_size */
     tiler_block_info blk;
     blk.fmt = TILFMT_8BIT;
-    blk.width = PAGE_SIZE * 8 / 10;
-    blk.height = 10;
+    blk.dim.area.width = PAGE_SIZE * 8 / 10;
+    blk.dim.area.height = 10;
     A_I(def_size(&blk),==,10 * PAGE_SIZE);
 
     blk.fmt = TILFMT_16BIT;
-    blk.width = PAGE_SIZE * 7 / 10;
+    blk.dim.area.width = PAGE_SIZE * 7 / 10;
     A_I(def_size(&blk),==,20 * PAGE_SIZE);
-    blk.width = PAGE_SIZE * 4 / 10;
+    blk.dim.area.width = PAGE_SIZE * 4 / 10;
     A_I(def_size(&blk),==,10 * PAGE_SIZE);
 
     blk.fmt = TILFMT_32BIT;
     A_I(def_size(&blk),==,20 * PAGE_SIZE);
-    blk.width = PAGE_SIZE * 6 / 10;
+    blk.dim.area.width = PAGE_SIZE * 6 / 10;
     A_I(def_size(&blk),==,30 * PAGE_SIZE);
 }
 
