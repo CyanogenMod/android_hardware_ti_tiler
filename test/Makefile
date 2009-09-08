@@ -1,7 +1,7 @@
-BIN=tilerdrvtest
+BIN=tilertest
 
 SRC=\
-	tilertest.c
+	tiler_test.c
 
 INCLUDE+=-I./ -I$(SHAREDINCDIR)
 

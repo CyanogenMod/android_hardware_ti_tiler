@@ -1,7 +1,7 @@
 /*
  * tilermgr.h
  *
- * DMM library support functions for TI OMAP processors.
+ * TILER library support functions for TI OMAP processors.
  *
  * Copyright (C) 2009-2010 Texas Instruments, Inc.
  *
@@ -24,7 +24,7 @@
 
 int TilerMgr_Open();
 int TilerMgr_Close();
-SSPtr TilerMgr_Alloc(enum pixel_fmt_t pixfmt, pixels_t width, pixels_t heigth);
+SSPtr TilerMgr_Alloc(enum pixel_fmt_t pixfmt, pixels_t width, pixels_t height);
 int TilerMgr_Free(SSPtr ssptr);
 SSPtr TilerMgr_PageModeAlloc(bytes_t length);
 int TilerMgr_PageModeFree(SSPtr ssptr);

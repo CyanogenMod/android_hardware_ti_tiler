@@ -1,7 +1,7 @@
 /*
- * tiler.c
+ * tilermgr.c
  *
- * DMM library support functions for TI OMAP processors.
+ * TILER library support functions for TI OMAP processors.
  *
  * Copyright (C) 2009-2010 Texas Instruments, Inc.
  *
