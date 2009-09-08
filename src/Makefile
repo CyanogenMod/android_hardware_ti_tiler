@@ -1,13 +1,14 @@
 SHAREDINCPATH=-I.
-LIB=libdmmdrv.so
+LIB=libmemmgr.so
 PUBLIC_API=tilermgr.h
 
 SRC=\
+	memmgr.c\
 	tilermgr.c
 
 INCLUDE+=$(SHAREDINCPATH)
 
-CFLAGS+=-Wall -fpic -pipe -ansi $(INCLUDE)
+CFLAGS+=-Wall -fpic -pipe $(INCLUDE)
 
 CC=$(CROSS)gcc
 OBJ=$(SRC:.c=.o)
