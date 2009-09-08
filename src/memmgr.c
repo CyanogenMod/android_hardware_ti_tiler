@@ -26,12 +26,12 @@
 #define BUF_ALLOCED 0
 #define BUF_MAPPED  1
 
-#include "../../tiler-omap4/drivers/media/video/tiler/dmm.h"
+#include <tiler.h>
 
 typedef struct tiler_block_info tiler_block_info;
 
 #define __DEBUG__
-// #define __DEBUG_ENTRY__
+/* #define __DEBUG_ENTRY__ */
 #define __DEBUG_ASSERT__
 
 #include "memmgr.h"
@@ -45,7 +45,7 @@ SSPtr TilerMgr_Alloc(enum tiler_fmt fmt, pixels_t w, pixels_t h) { return 1; }
 SSPtr TilerMgr_Map(void *p, bytes_t l) { return 1; }
 int TilerMgr_PageModeFree(SSPtr p) { return 0; }
 int TilerMgr_Free(SSPtr p) { return 0; }
-int TilerMgr_UnMap(SSPtr p) { return 0; }
+int TilerMgr_Unmap(SSPtr p) { return 0; }
 #else
 #include "tilermgr.h"
 #endif
@@ -68,6 +68,12 @@ typedef struct _AllocData _AllocData;
 
 static int refCnt = 0;
 static int td = -1;
+
+/**
+ * Initializes the static structures
+ * 
+ * @author a0194118 (9/8/2009)
+ */
 static void init()
 {
     if (!bufs_inited)
@@ -119,7 +125,7 @@ static int dec_ref()
     if (refCnt <= 0) return 1;
     if (!--refCnt) {
 #ifndef __STUB_TILER__
-        fclose(td);
+        close(td);
         td = -1;
         return A_I(TilerMgr_Close(),==,0);
 #else
@@ -169,14 +175,14 @@ static enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
     _AllocData *ad;
     void *ptr = (void *) ssptr;
     if (!ptr) return TILFMT_INVALID;
-    // P("?%p", (void *)ssptr);
+    /* P("?%p", (void *)ssptr); */
     DLIST_MLOOP(bufs, ad, link) {
         int ix;
         struct tiler_buf_info *buf = (struct tiler_buf_info *) ad->tiler_id;
-        // P("buf[%d]", buf->num_blocks);
+        /* P("buf[%d]", buf->num_blocks); */
         for (ix = 0; ix < buf->num_blocks; ix++)
         {
-            // P("block[%p-%p]", buf->blocks[ix].ptr, buf->blocks[ix].ptr + def_size(buf->blocks + ix));
+            /* P("block[%p-%p]", buf->blocks[ix].ptr, buf->blocks[ix].ptr + def_size(buf->blocks + ix)); */
             if (ptr >= buf->blocks[ix].ptr &&
                 ptr < buf->blocks[ix].ptr + def_size(buf->blocks + ix))
                 return buf->blocks[ix].fmt;
@@ -266,7 +272,7 @@ static int tiler_unmap(struct tiler_block_info *blk)
 {
     if (blk->fmt == PIXEL_FMT_PAGE)
     {
-        return TilerMgr_UnMap(blk->ssptr);
+        return TilerMgr_Unmap(blk->ssptr);
     }
     else
     {
@@ -313,13 +319,16 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
 {
     /* get size */
     bytes_t size = tiler_size(blks, num_blocks);
+    int ix;
 
     /* register buffer with tiler */
     struct tiler_buf_info buf;
     buf.num_blocks = num_blocks;
     memcpy(buf.blocks, blks, sizeof(tiler_block_info) * num_blocks);
 #ifndef __STUB_TILER__
-    ret = ioctl(td, TILIOC_RBUF, &buf);
+    int ret = ioctl(td, TILIOC_RBUF, &buf);
+    if (NOT_I(ret,==,0)) return NULL;
+
 #else
     /* save buffer in stub */
     struct tiler_buf_info *buf_c = NEW(struct tiler_buf_info);
@@ -333,13 +342,12 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
                         td, buf.offset);
 #else
     void *bufPtr = malloc(size);
-    // P("<= [0x%lx]", size);
+    /* P("<= [0x%lx]", size); */
 
     /* fill out pointers - this is needed for caching 1D/2D type */
-    int ix;
     for (size = ix = 0; ix < num_blocks; ix++)
     {
-        buf.blocks[ix].ptr = bufPtr + size;
+        buf.blocks[ix].ptr = bufPtr ? bufPtr + size : bufPtr;
         size += def_size(blks + ix);
     }
 
@@ -350,7 +358,7 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
     if (NOT_P(bufPtr,!=,NULL))
     {
 #ifndef __STUB_TILER__
-        ioctl(td, TILIOC_URBUF, &buf);
+        A_I(ioctl(td, TILIOC_URBUF, &buf),==,0);
 #else
         FREE(buf_c);
         buf.offset = 0;
@@ -363,7 +371,7 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
         for (size = ix = 0; ix < num_blocks; ix++)
         {
             blks[ix].ptr = bufPtr + size;
-            // P("   [0x%p]", blks[ix].ptr);
+            /* P("   [0x%p]", blks[ix].ptr); */
             size += def_size(blks + ix);
 #ifdef __STUB_TILER__
             blks[ix].ssptr = (uint32_t) blks[ix].ptr;
@@ -629,7 +637,7 @@ int MemMgr_Free(void *bufPtr)
 
             /* unmap buffer */
             bytes_t size = tiler_size(buf.blocks, buf.num_blocks);
-            ERR_ADD(ret, munmap(bufPtr, size),==,0);
+            ERR_ADD(ret, munmap(bufPtr, size));
         }
 #else
         void *ptr = (void *) buf.offset;
@@ -733,7 +741,7 @@ int MemMgr_UnMap(void *bufPtr)
 
             /* unmap buffer */
             bytes_t size = tiler_size(buf.blocks, buf.num_blocks);
-            ERR_ADD(ret, munmap(bufPtr, size),==,0);
+            ERR_ADD(ret, munmap(bufPtr, size));
         }
 #else
         void *ptr = (void *) buf.offset;
@@ -781,6 +789,7 @@ bytes_t MemMgr_GetStride(void *ptr)
     IN;
 #ifndef __STUB_TILER__
     /* :TODO: */
+    return R_UP(PAGE_SIZE);
 #else
     /* if emulating, we need to get through all allocated memory segments */
     init();
@@ -817,7 +826,7 @@ bytes_t TilerMem_GetStride(SSPtr ssptr)
 SSPtr TilerMem_VirtToPhys(void *ptr)
 {
 #ifndef __STUB_TILER__
-    return (SSPtr)tilervirt2phys((uint32_t *) ptr);
+    return TilerMgr_VirtToPhys(ptr);
 #else
     return (SSPtr)ptr;
 #endif

@@ -1,14 +1,14 @@
-SHAREDINCPATH=-I.
+INCPATH=.:$(TILER_DRIVER_INC_PATH)
 LIB=libmemmgr.so
-PUBLIC_API=tilermgr.h
+PUBLIC_HDR=tilermgr.h
 
 SRC=\
 	memmgr.c\
 	tilermgr.c
 
-INCLUDE+=$(SHAREDINCPATH)
+INCLUDE+=$(patsubst %,-I%,$(subst :, ,$(INCPATH)))
 
-CFLAGS+=-Wall -fpic -pipe $(INCLUDE)
+CFLAGS+=-Wall -fpic -pipe -ansi $(INCLUDE)
 
 CC=$(CROSS)gcc
 OBJ=$(SRC:.c=.o)
@@ -17,9 +17,9 @@ all:: $(LIB)
 
 install::
 	cp -f $(LIB) $(LIBDIR)
-	cp -f $(PUBLIC_API) $(INCDIR)
+	cp -f $(PUBLIC_HDR) $(INCDIR)
 
-$(LIB):: $(OBJ)
+$(LIB)::$(OBJ)
 	$(CC) $(CFLAGS) -shared -o $(LIB) $(OBJ)
 
 clean::
@@ -28,4 +28,4 @@ clean::
 
 distclean:: clean
 	rm -f $(LIBDIR)/$(LIB)
-	rm -f $(INCDIR)/$(PUBLIC_API)
+	rm -f $(INCDIR)/$(PUBLIC_HDR)

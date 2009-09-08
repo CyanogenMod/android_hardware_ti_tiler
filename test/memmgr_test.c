@@ -150,7 +150,7 @@ void fill_mem(uint16_t start, MemAllocBlock *block)
     }
     width *= def_bpp(block->pixelFormat);
 
-    // P("(%p,0x%x*0x%x,s=0x%x)", block->ptr, width, height, stride);
+    /* P("(%p,0x%x*0x%x,s=0x%x)", block->ptr, width, height, stride); */
 
     A_I(width,<=,stride);
     while (height--)

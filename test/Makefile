@@ -1,30 +1,35 @@
-SHAREDINCPATH=-I. -I../src
-TESTS=memmgr_test utils_test
+INCPATH=.:../src
+LIBPATH=../src
+SHAREDLIB+=-lmemmgr
 PUBLIC_API=tilermgr.h
 
 SRC=\
-	memmgr_test.c
-	utils_test.c
+	memmgr_test.c\
+	utils_test.c\
+	tiler_test.c
 
-INCLUDE+=$(SHAREDINCPATH)
+BIN=$(SRC:.c=)
 
-CFLAGS+=-Wall -fpic -pipe $(INCLUDE)
+INCLUDE+=$(patsubst %,-I%,$(subst :, ,$(INCPATH)))
+LIBINCLUDE+=$(patsubst %,-L%,$(subst :, ,$(LIBPATH)))
+
+CFLAGS+=-Wall -fpic -pipe -ansi $(INCLUDE)
 
 CC=$(CROSS)gcc
 OBJ=$(SRC:.c=.o)
 
-all:: $(TESTS)
+all:: $(BIN)
 
 install::
-	cp -f $(TESTS) $(EXEDIR)
+	cp -f $(BIND) $(BINDIR)
 
-% : %.c
-	$(CC) -c $(CFLAGS) $(CPPFLAGS) $< -o $@
+%: %.c
+	$(CC) $(CFLAGS) $(LIBINCLUDE) $(SHAREDLIB) $< -o $@
 
 clean::
-	rm -f $(LIB)
+	rm -f $(BIN)
 	rm -f $(OBJ)
 
 distclean:: clean
-	rm -f $(LIBDIR)/$(LIB)
-	rm -f $(INCDIR)/$(PUBLIC_API)
+	rm -f $(BINDIR)/$(BIN)
+
