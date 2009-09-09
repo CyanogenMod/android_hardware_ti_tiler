@@ -43,7 +43,6 @@ static int fd;
 
 int TilerMgr_Close()
 {
-    dump(0);
     int ret = -1;
 
     ret = ioctl(fd, TILIOC_CLOSE, (unsigned long)block);
@@ -55,7 +54,10 @@ int TilerMgr_Close()
     if (block != NULL)
         free(block);
 
-    return TILERMGR_ERR_NONE;
+    if (ret == -1)
+        return TILERMGR_ERR_GENERIC;
+    else
+        return TILERMGR_ERR_NONE;
 }
 
 int TilerMgr_Open()
@@ -63,14 +65,12 @@ int TilerMgr_Open()
     int ret = -1;
     void *ptr = NULL;
 
-    dump(0);
     fd = open(TILER_DEVICE_PATH, O_RDWR);
     if (fd < 0) {
         TILERMGR_ERROR("open():fail");
         return TILERMGR_ERR_GENERIC;
     }
 
-    dump(0);
     block = (struct tiler_block_info *)malloc(sizeof(struct tiler_block_info));
     ptr = memset(block, 0x0, sizeof(struct tiler_block_info));
     if ((struct tiler_block_info *)ptr != block) {
@@ -79,7 +79,6 @@ int TilerMgr_Open()
         return TILERMGR_ERR_GENERIC;
     }
 
-    dump(0);
     ret = ioctl(fd, TILIOC_OPEN, (unsigned long)block);
     if (ret == -1) {
         TILERMGR_ERROR("ioctl():fail");
@@ -92,15 +91,17 @@ int TilerMgr_Open()
 SSPtr TilerMgr_Alloc(enum pixel_fmt_t pf, pixels_t w, pixels_t h)
 {
     int ret = -1;
-    assert(pf >= PIXEL_FMT_8BIT && pf <= PIXEL_FMT_32BIT);
-    assert(w > 0 && w <= TILER_WIDTH * 64);
-    assert(h > 0 && h <= TILER_HEIGHT * 64);
+    if (pf < PIXEL_FMT_8BIT || pf > PIXEL_FMT_32BIT)
+        return 0x0;
+    if (w <= 0 || w > TILER_WIDTH * 64)
+        return 0x0;
+    if (h <= 0 || h > TILER_HEIGHT * 64)
+        return 0x0;
 
     block->fmt = pf;
     block->dim.area.width = w;
     block->dim.area.height = h;
 
-    dump(0);
     ret = ioctl(fd, TILIOC_GBUF, (unsigned long)block);
     if (ret < 0) {
         TILERMGR_ERROR("ioctl():fail");
@@ -111,9 +112,11 @@ SSPtr TilerMgr_Alloc(enum pixel_fmt_t pf, pixels_t w, pixels_t h)
 
 int TilerMgr_Free(SSPtr s)
 {
-    int ret = -1;
+    int ret = TILERMGR_ERR_GENERIC;
 
-    assert(s >= TILER_MEM_8BIT && s < TILER_MEM_32BIT);
+    if (s < TILER_MEM_8BIT || s >= TILER_MEM_PAGED)
+        return TILERMGR_ERR_GENERIC;
+    
     block->ssptr = s;
 
     ret = ioctl(fd, TILIOC_FBUF, (unsigned long)block);
@@ -128,7 +131,8 @@ SSPtr TilerMgr_PageModeAlloc(bytes_t len)
 {
     int ret = -1;
 
-    assert(len > 0 && len <= TILER_LENGTH);
+    if(len < 0 || len > TILER_LENGTH)
+        return 0x0;
 
     block->fmt = TILFMT_PAGE;
     block->dim.len = len;
@@ -136,7 +140,7 @@ SSPtr TilerMgr_PageModeAlloc(bytes_t len)
     ret = ioctl(fd, TILIOC_GBUF, (unsigned long)block);
     if (ret < 0) {
         TILERMGR_ERROR("ioctl():fail");
-        return 0x0;
+        return TILERMGR_ERR_GENERIC;
     }
     return block->ssptr;
 }
@@ -145,6 +149,9 @@ int TilerMgr_PageModeFree(SSPtr s)
 {
     int ret = -1;
 
+    if (s < TILER_MEM_PAGED || s >= TILER_MEM_END)
+        return TILERMGR_ERR_GENERIC;
+    
     block->ssptr = s;
 
     ret = ioctl(fd, TILIOC_FBUF, (unsigned long)block);
@@ -159,7 +166,8 @@ SSPtr TilerMgr_VirtToPhys(void *ptr)
 {
     int ret = -1;
 
-    assert(ptr != NULL);
+    if(ptr == NULL) 
+        return 0x0;
 
     block->ptr = ptr;
 
