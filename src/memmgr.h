@@ -70,12 +70,10 @@ struct MemAllocBlock {
         struct {
             pixels_t width;  /* width of 2D buffer */
             pixels_t height; /* height of 2D buffer */
-        };
-        struct {
-            bytes_t  length; /* length of 1D buffer.  Must be multiple of
+        } area;
+        bytes_t  len;        /* length of 1D buffer.  Must be multiple of
                                 stride if stride is not 0. */
-        };
-    };
+    } dim;
     uint32_t stride;    /* must be multiple of page size.  Can be 0 only
                            if pixelFormat is PIXEL_FMT_PAGE. */
     void    *ptr;       /* pointer to beginning of buffer */
