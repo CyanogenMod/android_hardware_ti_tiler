@@ -24,10 +24,11 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "../src/memmgr.h"
-#include "../src/memmgr_utils.h"
-#include "../src/tilermem.h"
-#include "../src/utils.h"
+#include <utils.h>
+#include <memmgr.h>
+#include <tilermem.h>
+#include <tilermem_utils.h>
+#include "../src/memmgr_common.c"
 
 #define FALSE 0
 
@@ -113,7 +114,7 @@
 
 /* this is defined in memmgr.c, but not exported as it is for internal 
    use only */
-extern void memmgr_internal_unit_test();
+extern int __test__MemMgr();
 
 /**
  * This method fills up a range of memory using a start address
@@ -415,7 +416,7 @@ int free_2D(pixels_t width, pixels_t height, pixel_fmt_t fmt, bytes_t stride,
 void *alloc_NV12(pixels_t width, pixels_t height, uint16_t val)
 {
     MemAllocBlock blocks[2];
-    memset(blocks, 0, sizeof(blocks));
+    ZERO(blocks);
 
     blocks[0].pixelFormat = PIXEL_FMT_8BIT;
     blocks[0].dim.area.width  = width;
@@ -1293,12 +1294,12 @@ int result(int res)
 {
     if (res)
     {
-        printf("==> FAIL(%d)\n", res);
+        printf("==> TEST FAIL(%d)\n", res);
         return 1;
     }
     else
     {
-        printf("==> OK\n");
+        printf("==> TEST OK\n");
         return 0;
     }
 }
@@ -1318,7 +1319,7 @@ int result(int res)
 int test(int id)
 {
     int i = id;
-    #define T(test) if (!--i) { printf("TEST %d - ", id); return result(test); }
+    #define T(test) if (!--i) { printf("TEST #% 3d - %s\nTEST_DESC - ", id, #test); return result(test); }
     TESTS
     return -1;
 }
@@ -1376,6 +1377,7 @@ int main(int argc, char **argv)
     {
         fprintf(stderr, "Usage: %s [<range>], where <range> is\n"
                 "   empty:   run all tests\n"
+                "   list:    list tests\n"
                 "   ix:      run test #ix\n"
                 "   a ..:    run tests #a, #a+1, ...\n"
                 "   .. b:    run tests #1, #2, .. #b\n"
@@ -1393,7 +1395,7 @@ int main(int argc, char **argv)
 
     /* also execute internal unit tests - this also verifies that we did not
        keep any references */
-    memmgr_internal_unit_test();
+    __test__MemMgr();
 
     return failed;
 }

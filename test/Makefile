@@ -1,7 +1,6 @@
-INCPATH=.:../src
+INCPATH=.:../src:$(TILER_DRIVER_INC_PATH)
 LIBPATH=../src
 SHAREDLIB+=-lmemmgr
-PUBLIC_API=tilermgr.h
 
 SRC=\
 	memmgr_test.c\

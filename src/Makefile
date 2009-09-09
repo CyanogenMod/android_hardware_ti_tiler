@@ -1,9 +1,10 @@
 INCPATH=.:$(TILER_DRIVER_INC_PATH)
 LIB=libmemmgr.so
-PUBLIC_HDR=tilermgr.h
+PUBLIC_HDR=tilermgr.h memmgr.h tilermem.h mem_types.h
 
 SRC=\
 	memmgr.c\
+	tilermem.c\
 	tilermgr.c
 
 INCLUDE+=$(patsubst %,-I%,$(subst :, ,$(INCPATH)))
