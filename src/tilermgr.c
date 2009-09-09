@@ -29,9 +29,15 @@
 #include "tilermgr.h"
 #include "mem_types.h"
 
-#define dump(x) fprintf(stdout, "%s::%s():%d: %lx\n", __FILE__, __func__, __LINE__, (unsigned long)x); fflush(stdout); 
-
 extern int errno;
+
+#define dump(x) fprintf(stdout, "%s::%s():%d: %lx\n", \
+		__FILE__, __func__, __LINE__, (unsigned long)x); fflush(stdout); 
+#define TILERMGR_ERROR(x) \
+	fprintf(stderr, "%s::%s():%d:%s\n", __FILE__, __func__, __LINE__, x);  \
+	fprintf(stderr, "errno(%d) - \"%s\"\n", errno, strerror(errno));       \
+	fflush(stderr);
+
 static struct tiler_block_info *block;
 static int fd;
 
@@ -42,7 +48,7 @@ int TilerMgr_Close()
 
     ret = ioctl(fd, TILIOC_CLOSE, (unsigned long)block);
     if (ret == -1)
-        fprintf(stderr, "ioctl():fail\n"); fprintf(stderr, "errno(%d) - \"%s\"\n", errno, strerror(errno)); fflush(stderr);
+        TILERMGR_ERROR("ioctl():fail");
 
     close(fd);
 
@@ -60,7 +66,7 @@ int TilerMgr_Open()
     dump(0);
     fd = open(TILER_DEVICE_PATH, O_RDWR);
     if (fd < 0) {
-        fprintf(stderr, "open():fail\n"); fprintf(stderr, "errno(%d) - \"%s\"\n", errno, strerror(errno)); fflush(stderr);
+        TILERMGR_ERROR("open():fail");
         return TILERMGR_ERR_GENERIC;
     }
 
@@ -68,7 +74,7 @@ int TilerMgr_Open()
     block = (struct tiler_block_info *)malloc(sizeof(struct tiler_block_info));
     ptr = memset(block, 0x0, sizeof(struct tiler_block_info));
     if ((struct tiler_block_info *)ptr != block) {
-        fprintf(stderr, "memset():fail\n"); fflush(stderr);
+        TILERMGR_ERROR("memset():fail");
         free(block); block = NULL; close(fd);
         return TILERMGR_ERR_GENERIC;
     }
@@ -76,7 +82,7 @@ int TilerMgr_Open()
     dump(0);
     ret = ioctl(fd, TILIOC_OPEN, (unsigned long)block);
     if (ret == -1) {
-        fprintf(stderr, "ioctl():fail\n"); fprintf(stderr, "errno(%d) - \"%s\"\n", errno, strerror(errno)); fflush(stderr);
+        TILERMGR_ERROR("ioctl():fail");
         free(block); block = NULL; close(fd);
         return TILERMGR_ERR_GENERIC;
     }
@@ -91,13 +97,13 @@ SSPtr TilerMgr_Alloc(enum pixel_fmt_t pf, pixels_t w, pixels_t h)
     assert(h > 0 && h <= TILER_HEIGHT * 64);
 
     block->fmt = pf;
-    block->dim.d2.width = w;
-    block->dim.d2.height = h;
+    block->dim.area.width = w;
+    block->dim.area.height = h;
 
     dump(0);
-    ret = ioctl(fd, TILIOC_GBUF, block);
+    ret = ioctl(fd, TILIOC_GBUF, (unsigned long)block);
     if (ret < 0) {
-        fprintf(stderr, "ioctl():fail\n"); fprintf(stderr, "errno(%d) - \"%s\"\n", errno, strerror(errno)); fflush(stderr);
+        TILERMGR_ERROR("ioctl():fail");
         return 0x0;
     }
     return block->ssptr;
@@ -112,7 +118,7 @@ int TilerMgr_Free(SSPtr s)
 
     ret = ioctl(fd, TILIOC_FBUF, (unsigned long)block);
     if (ret < 0) {
-        fprintf(stderr, "ioctl():fail\n"); fprintf(stderr, "errno(%d) - \"%s\"\n", errno, strerror(errno)); fflush(stderr);
+        TILERMGR_ERROR("ioctl():fail");
         return TILERMGR_ERR_GENERIC;
     }
     return TILERMGR_ERR_NONE;
@@ -125,11 +131,11 @@ SSPtr TilerMgr_PageModeAlloc(bytes_t len)
     assert(len > 0 && len <= TILER_LENGTH);
 
     block->fmt = TILFMT_PAGE;
-    block->dim.d1.length = len;
+    block->dim.len = len;
 
     ret = ioctl(fd, TILIOC_GBUF, (unsigned long)block);
     if (ret < 0) {
-        fprintf(stderr, "ioctl():fail\n"); fprintf(stderr, "errno(%d) - \"%s\"\n", errno, strerror(errno)); fflush(stderr);
+        TILERMGR_ERROR("ioctl():fail");
         return 0x0;
     }
     return block->ssptr;
@@ -141,9 +147,9 @@ int TilerMgr_PageModeFree(SSPtr s)
 
     block->ssptr = s;
 
-    ret = ioctl(fd, TILIOC_FBUF, block);
+    ret = ioctl(fd, TILIOC_FBUF, (unsigned long)block);
     if (ret < 0) {
-        fprintf(stderr, "ioctl():fail\n"); fprintf(stderr, "errno(%d) - \"%s\"\n", errno, strerror(errno)); fflush(stderr);
+        TILERMGR_ERROR("ioctl():fail");
         return TILERMGR_ERR_GENERIC;
     }
     return TILERMGR_ERR_NONE;
@@ -157,9 +163,9 @@ SSPtr TilerMgr_VirtToPhys(void *ptr)
 
     block->ptr = ptr;
 
-    ret = ioctl(fd, TILIOC_GSSP, block);
+    ret = ioctl(fd, TILIOC_GSSP, (unsigned long)block);
     if (ret < 0) {
-        fprintf(stderr, "ioctl():fail\n"); fprintf(stderr, "errno(%d) - \"%s\"\n", errno, strerror(errno)); fflush(stderr);
+        TILERMGR_ERROR("ioctl():fail");
         return 0x0;
     }
     return block->ssptr;
