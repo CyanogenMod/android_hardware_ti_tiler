@@ -72,12 +72,12 @@ int main(int argc, const char *argv[])
 	dump(0);
 
 	b1.pixelFormat = PIXEL_FMT_8BIT;
-	b1.dim.d2.width = 176;
-	b1.dim.d2.height = 144;
+	b1.dim.area.width = 176;
+	b1.dim.area.height = 144;
 
 	for (i = 0; i < TILERTEST_COUNT; i++) 
 	{
-		ssptr[i] = TilerMgr_Alloc(b1.pixelFormat, b1.dim.d2.width, b1.dim.d2.height);
+		ssptr[i] = TilerMgr_Alloc(b1.pixelFormat, b1.dim.area.width, b1.dim.area.height);
 		if (ssptr[i] == 0x0)
 			fprintf(stderr, "%s::%s():%d:F!\n", __FILE__, __func__, __LINE__); fflush(stderr);
 		dump(ssptr[i]);
@@ -92,15 +92,15 @@ int main(int argc, const char *argv[])
 		return error;
 	}
 
-	dump(b1.dim.d2.height*PAGESIZE);
-	b1.ptr = (void *)mmap(0, b1.dim.d2.height*PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, ssptr[TILERTEST_COUNT]);
+	dump(b1.dim.area.height*PAGESIZE);
+	b1.ptr = (void *)mmap(0, b1.dim.area.height*PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, ssptr[TILERTEST_COUNT]);
 	if ((unsigned long *)b1.ptr == MAP_FAILED) {
 		fprintf(stderr, "%s::%s():%d:F!\n", __FILE__, __func__, __LINE__); fflush(stderr);
 		close(fd);
 		TilerMgr_Free(ssptr[TILERTEST_COUNT]);
 		return error;
 	}
-	memset(b1.ptr, 0x0, b1.dim.d2.height*PAGESIZE);
+	memset(b1.ptr, 0x0, b1.dim.area.height*PAGESIZE);
 
 	dump(0);
 	physptr = TILERMGR_VirtToPhys(b1.ptr);
@@ -119,7 +119,7 @@ int main(int argc, const char *argv[])
 	dump(0);
 	read_buffer_data(b1.ptr+0x400, 176);
 	dump(0);
-	read_buffer_data(b1.ptr, b1.dim.d2.height*PAGESIZE);
+	read_buffer_data(b1.ptr, b1.dim.area.height*PAGESIZE);
 #endif
 
 	dump(0);
