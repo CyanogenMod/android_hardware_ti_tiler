@@ -1,10 +1,15 @@
-LIB=libtilermgr.so
-PUBLIC_HDR=tilermgr.h
+INCPATH=.:$(TILER_DRIVER_INC_PATH)
+LIB=libmemmgr.so
+PUBLIC_HDR=tilermgr.h memmgr.h tilermem.h mem_types.h
 
 SRC=\
+	memmgr.c\
+	tilermem.c\
 	tilermgr.c
 
-CFLAGS+=-Wall -fpic -pipe -ansi -I./ -I$(TILER_DRIVER_INC_PATH)
+INCLUDE+=$(patsubst %,-I%,$(subst :, ,$(INCPATH)))
+
+CFLAGS+=-Wall -fpic -pipe -ansi $(INCLUDE)
 
 CC=$(CROSS)gcc
 OBJ=$(SRC:.c=.o)
@@ -15,7 +20,7 @@ install::
 	cp -f $(LIB) $(LIBDIR)
 	cp -f $(PUBLIC_HDR) $(INCDIR)
 
-$(LIB):: $(OBJ)
+$(LIB)::$(OBJ)
 	$(CC) $(CFLAGS) -shared -o $(LIB) $(OBJ)
 
 clean::

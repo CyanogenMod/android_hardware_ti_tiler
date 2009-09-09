@@ -17,9 +17,9 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
-//#define __DEBUG__
-//#define __DEBUG_ENTRY__
-//#define __DEBUG_ASSERT__
+/*#define __DEBUG__*/
+/*#define __DEBUG_ENTRY__*/
+/*#define __DEBUG_ASSERT__*/
 
 /* ---------- Generic Macros Used in Macros ---------- */
 
