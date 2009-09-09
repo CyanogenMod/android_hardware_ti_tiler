@@ -136,6 +136,7 @@ extern int __test__MemMgr();
  */
 void fill_mem(uint16_t start, MemAllocBlock *block)
 {
+    IN;
     uint16_t *ptr = (uint16_t *)block->ptr, delta = 1, step = 1;
     bytes_t height, width, stride, i;
     if (block->pixelFormat == PIXEL_FMT_PAGE)
@@ -170,6 +171,7 @@ void fill_mem(uint16_t start, MemAllocBlock *block)
             i += sizeof(uint16_t);
         }
     }
+    OUT;
 }
 
 /**
@@ -185,6 +187,7 @@ void fill_mem(uint16_t start, MemAllocBlock *block)
  */
 int check_mem(uint16_t start, MemAllocBlock *block)
 {
+    IN;
     uint16_t *ptr = (uint16_t *)block->ptr, delta = 1, step = 1;
     bytes_t height, width, stride, r, i;
     if (block->pixelFormat == PIXEL_FMT_PAGE)
@@ -207,7 +210,7 @@ int check_mem(uint16_t start, MemAllocBlock *block)
         {
             if (*ptr++ != start) {
                 DP("assert: val[%u,%u] (=0x%x) != 0x%x", r, i, *--ptr, start);
-                return MEMMGR_ERR_GENERIC;
+                return R_I(MEMMGR_ERR_GENERIC);
             }
             start += delta;
             delta += step;
@@ -218,12 +221,12 @@ int check_mem(uint16_t start, MemAllocBlock *block)
         {
             if (*ptr++) {
                 DP("assert: val[%u,%u] (=0x%x) != 0", r, i, *--ptr);
-                return MEMMGR_ERR_GENERIC;
+                return R_I(MEMMGR_ERR_GENERIC);
             }
             i += sizeof(uint16_t);
         }
     }
-    return MEMMGR_ERR_NONE;
+    return R_I(MEMMGR_ERR_NONE);
 }
 
 /**
@@ -1384,6 +1387,9 @@ int main(int argc, char **argv)
                 "   a .. b:  run tests #a, #a+1, .. #b\n", argv[0]);
         return -1;
     }
+
+    /* execute internal unit tests */
+    __test__MemMgr();
 
     do
     {

@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <pthread.h>
 
 #define BUF_ALLOCED 1
 #define BUF_MAPPED  2
@@ -73,6 +74,8 @@ typedef struct _AllocData _AllocData;
 
 static int refCnt = 0;
 static int td = -1;
+static pthread_mutex_t ref_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t che_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
 {
@@ -130,23 +133,30 @@ static void init()
 static int inc_ref()
 {
     /* initialize tiler on first call */
-    /* :TODO: concurrency */
+    pthread_mutex_lock(&ref_mutex);
+
+    int res = MEMMGR_ERR_NONE;
+
     if (!refCnt++) {
         /* initialize lists */
         init();
 #ifndef __STUB_TILER__
         td = open("/dev/tiler", O_RDWR | O_SYNC);
         DP("td=%d", td);
-        if (NOT_I(td,>=,0) || NOT_I(TilerMgr_Open(),==,0)) {
-            refCnt--;
-            return MEMMGR_ERR_GENERIC;
-        }
+        if (NOT_I(td,>=,0)) res = MEMMGR_ERR_GENERIC;
+        ERR_ADD(res, TilerMgr_Open());
 #else
         td = 2;
-        return 0;
+        res = MEMMGR_ERR_NONE;
 #endif
     }
-    return MEMMGR_ERR_NONE;
+    if (res)
+    {
+        refCnt--;
+    }
+    
+    pthread_mutex_unlock(&ref_mutex);
+    return res;
 }
 
 /**
@@ -159,17 +169,21 @@ static int inc_ref()
  */
 static int dec_ref()
 {
-    if (refCnt <= 0) return 1;
-    if (!--refCnt) {
+    pthread_mutex_lock(&ref_mutex);
+
+    int res = MEMMGR_ERR_NONE;;
+
+    if (refCnt <= 0) res = MEMMGR_ERR_GENERIC;
+    else if (!--refCnt) {
 #ifndef __STUB_TILER__
         close(td);
         td = -1;
-        return A_I(TilerMgr_Close(),==,0);
-#else
-        return 0;
+        res = A_I(TilerMgr_Close(),==,0);
 #endif
     }
-    return 0;
+
+    pthread_mutex_unlock(&ref_mutex);
+    return res;
 }
 
 /**
@@ -201,12 +215,14 @@ static bytes_t def_size(tiler_block_info *blk)
 static void buf_cache_add(void *bufPtr, bytes_t size, uint32_t tiler_id,
                           int buf_type)
 {
+    pthread_mutex_lock(&che_mutex);
     _AllocData *ad = NEW(_AllocData);
     ad->bufPtr = bufPtr;
     ad->size = size;
     ad->tiler_id = tiler_id;
     ad->buf_type = buf_type;
     DLIST_MADD_BEFORE(bufs, ad, link);
+    pthread_mutex_unlock(&che_mutex);
 }
 
 /**
@@ -225,6 +241,7 @@ static uint32_t buf_cache_query(void *ptr, int buf_type_mask,
                                 void **bufPtr)
 {
     _AllocData *ad;
+    pthread_mutex_lock(&che_mutex);
     DLIST_MLOOP(bufs, ad, link) {
         if ((ad->buf_type & buf_type_mask) &&
             ad->bufPtr <= ptr && ptr < ad->bufPtr + ad->size) {
@@ -232,9 +249,12 @@ static uint32_t buf_cache_query(void *ptr, int buf_type_mask,
             {
                 *bufPtr = ad->bufPtr;
             }
-            return ad->tiler_id;
+            uint32_t tiler_id = ad->tiler_id;
+            pthread_mutex_unlock(&che_mutex);
+            return tiler_id;
         }
     }
+    pthread_mutex_unlock(&che_mutex);
     return 0;
 }
 
@@ -253,14 +273,17 @@ static uint32_t buf_cache_query(void *ptr, int buf_type_mask,
 static uint32_t buf_cache_del(void *bufPtr, int buf_type)
 {
     _AllocData *ad;
+    pthread_mutex_lock(&che_mutex);
     DLIST_MLOOP(bufs, ad, link) {
         if (ad->bufPtr == bufPtr && ad->buf_type == buf_type) {
             uint32_t tiler_id = ad->tiler_id;
             DLIST_REMOVE(ad->link);
             FREE(ad);
+            pthread_mutex_unlock(&che_mutex);
             return tiler_id;
         }
     }
+    pthread_mutex_unlock(&che_mutex);
     return 0;
 }
 
@@ -276,12 +299,14 @@ static uint32_t buf_cache_del(void *bufPtr, int buf_type)
 static int cache_check()
 {
     int num_bufs = 0;
+    pthread_mutex_lock(&che_mutex);
 
     init();
 
     _AllocData *ad;
     DLIST_MLOOP(bufs, ad, link) { num_bufs++; }
 
+    pthread_mutex_unlock(&che_mutex);
     return (num_bufs == refCnt) ? MEMMGR_ERR_NONE : MEMMGR_ERR_GENERIC;
 }
 
@@ -305,6 +330,7 @@ enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
             ssptr < TILER_MEM_END   ? TILFMT_PAGE : TILFMT_NONE);
 #else
     /* if emulating, we need to get through all allocated memory segments */
+    pthread_mutex_lock(&che_mutex);
     init();
     _AllocData *ad;
     void *ptr = (void *) ssptr;
@@ -318,10 +344,14 @@ enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
         {
             /* P("block[%p-%p]", buf->blocks[ix].ptr, buf->blocks[ix].ptr + def_size(buf->blocks + ix)); */
             if (ptr >= buf->blocks[ix].ptr &&
-                ptr < buf->blocks[ix].ptr + def_size(buf->blocks + ix))
-                return buf->blocks[ix].fmt;
+                ptr < buf->blocks[ix].ptr + def_size(buf->blocks + ix)) {
+                enum tiler_fmt fmt = buf->blocks[ix].fmt;
+                pthread_mutex_unlock(&che_mutex);
+                return fmt;
+            }
         }
     }
+    pthread_mutex_unlock(&che_mutex);
     return TILFMT_NONE;
 #endif
 }
@@ -453,6 +483,8 @@ static bytes_t tiler_size(struct tiler_block_info *blks, int num_blocks)
 static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
                         int buf_type)
 {
+    IN;
+
     /* get size */
     bytes_t size = tiler_size(blks, num_blocks);
     int ix;
@@ -522,7 +554,7 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
         }
     }
 
-    return bufPtr;
+    return R_P(bufPtr);
 }
 
 /**
@@ -897,6 +929,7 @@ bytes_t MemMgr_GetStride(void *ptr)
     }
 #else
     /* if emulating, we need to get through all allocated memory segments */
+    pthread_mutex_lock(&che_mutex);
     init();
 
     _AllocData *ad;
@@ -908,9 +941,14 @@ bytes_t MemMgr_GetStride(void *ptr)
         {
             if (ptr >= buf->blocks[ix].ptr &&
                 ptr < buf->blocks[ix].ptr + def_size(buf->blocks + ix))
-                return R_UP(buf->blocks[ix].stride);
+            {    
+                bytes_t stride = buf->blocks[ix].stride;
+                pthread_mutex_unlock(&che_mutex);
+                return R_UP(stride);
+            }
         }
     }
+    pthread_mutex_unlock(&che_mutex);
 #endif
     return R_UP(PAGE_SIZE);
 }
@@ -940,6 +978,7 @@ int __test__MemMgr()
     ret |= NOT_I(PIXEL_FMT_16BIT,==,TILFMT_16BIT);
     ret |= NOT_I(PIXEL_FMT_32BIT,==,TILFMT_32BIT);
     ret |= NOT_I(PIXEL_FMT_PAGE,==,TILFMT_PAGE);
+    ret |= NOT_I(sizeof(MemAllocBlock),==,sizeof(struct tiler_block_info));
 
     /* void * arithmetic */
     void *a = (void *)1000, *b = a + 2000, *c = (void *)3000;
