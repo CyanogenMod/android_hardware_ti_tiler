@@ -23,23 +23,26 @@
 #include <errno.h>
 #include <string.h> /* strerror() */
 #include <assert.h>
-#include "memmgr.h"
+#include <sys/ioctl.h>
+/* #include "memmgr.h" */
+#include "tiler.h"
 #include "tilermgr.h"
 
 #define PAGESIZE 0x1000
 #define CONTAINER_W 256
 #define CONTAINER_H 128
 #define CONTAINER_LEN CONTAINER_W*CONTAINER_H*PAGE
-#define MAX_NUM_BUF 4
 #define TILERTEST_MEM_8BIT  0x60000000
 #define TILERTEST_MEM_16BIT 0x68000000
 #define TILERTEST_MEM_32BIT 0x70000000
 #define TILERTEST_MEM_PAGED 0x78000000
 #define TILERTEST_MEM_END   0x80000000
 
-#define TILERTEST_COUNT 10
-
-#define dump(x) fprintf(stdout, "%s::%s():%d: %lx\n", __FILE__, __func__, __LINE__, (unsigned long)x); fflush(stdout);
+#define dump(x) fprintf(stdout, "%s::%s():%d: %lx\n", \
+		__FILE__, __func__, __LINE__, (unsigned long)x); fflush(stdout);
+#define TILERTEST_EPRINT \
+	fprintf(stderr, "%s::%s():%d: error\n", __FILE__, __func__, __LINE__); \
+	fflush(stderr);
 
 extern int errno;
 static struct node *lsthd;
@@ -61,83 +64,116 @@ static int createlist(struct node **listhead);
 int main(int argc, const char *argv[])
 {
 	int error = TILERMGR_ERR_GENERIC;
-	MemAllocBlock b1 = {0};
-	int fd;
+	struct tiler_block_info block[TILER_MAX_NUM_BLOCKS];
+	struct tiler_buf_info bufinfo;
+	int fd = 0;
+	int fd2 = 0;
 	SSPtr physptr = 0x0;
-	SSPtr ssptr[TILERTEST_COUNT] = {0};
+	SSPtr ssptr[TILER_MAX_NUM_BLOCKS] = {0};
+	void *vsptr[TILER_MAX_NUM_BLOCKS] = {NULL};
 	int i = 0;
+	int ret = -1;
+	int offset = 0;
+	unsigned long size = 0;
 
 	assert(TilerMgr_Open() == 0);
 	assert(createlist(&lsthd) == 0);
 	dump(0);
 
-	b1.pixelFormat = PIXEL_FMT_8BIT;
-	b1.dim.area.width = 176;
-	b1.dim.area.height = 144;
-
-	for (i = 0; i < TILERTEST_COUNT; i++) 
+	for (i = 0; i < TILER_MAX_NUM_BLOCKS; i++) 
 	{
-		ssptr[i] = TilerMgr_Alloc(b1.pixelFormat, b1.dim.area.width, b1.dim.area.height);
-		if (ssptr[i] == 0x0)
-			fprintf(stderr, "%s::%s():%d:F!\n", __FILE__, __func__, __LINE__); fflush(stderr);
-		dump(ssptr[i]);
+		block[i].fmt = TILFMT_8BIT;
+		block[i].dim.area.width = 176;
+		block[i].dim.area.height = 144;
+		block[i].ssptr = TilerMgr_Alloc(block[i].fmt, block[i].dim.area.width, block[i].dim.area.height);
+		if (block[i].ssptr == 0x0)
+			TILERTEST_EPRINT;
+		dump(block[i].ssptr);
+		bufinfo.num_blocks = i+1;
+		bufinfo.blocks[i].fmt = block[i].fmt;
+		bufinfo.blocks[i].dim.area.width = block[i].dim.area.width;
+		bufinfo.blocks[i].dim.area.height = block[i].dim.area.height;
+		bufinfo.blocks[i].ssptr = block[i].ssptr;
 	}
 
-#if 0
-	dump(0);
 	fd = open("/dev/tiler", O_RDWR | O_SYNC);
 	if (fd < 0) {
-		fprintf(stderr, "%s::%s():%d:F!\n", __FILE__, __func__, __LINE__); fflush(stderr);
-		TilerMgr_Free(b1.reserved);
+		TILERTEST_EPRINT;
+		for(i=0;i<TILER_MAX_NUM_BLOCKS;i++)
+			TilerMgr_Free(block[i].ssptr);
 		return error;
 	}
 
-	dump(b1.dim.area.height*PAGESIZE);
-	b1.ptr = (void *)mmap(0, b1.dim.area.height*PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, ssptr[TILERTEST_COUNT]);
-	if ((unsigned long *)b1.ptr == MAP_FAILED) {
-		fprintf(stderr, "%s::%s():%d:F!\n", __FILE__, __func__, __LINE__); fflush(stderr);
+	ret = ioctl(fd, TILIOC_RBUF, (unsigned long)(&bufinfo));
+	if (ret == -1) {
+		TILERTEST_EPRINT;
+		for(i=0;i<TILER_MAX_NUM_BLOCKS;i++)
+			TilerMgr_Free(block[i].ssptr);
 		close(fd);
-		TilerMgr_Free(ssptr[TILERTEST_COUNT]);
 		return error;
 	}
-	memset(b1.ptr, 0x0, b1.dim.area.height*PAGESIZE);
 
-	dump(0);
-	physptr = TILERMGR_VirtToPhys(b1.ptr);
+	dump(bufinfo.offset);
+	offset = bufinfo.offset;
 
+	memset(&bufinfo, 0x0, sizeof(struct tiler_buf_info));
+	bufinfo.offset = offset;
+	
+	ret = ioctl(fd, TILIOC_QBUF, (unsigned long)(&bufinfo));
+	if (ret == -1) {
+		TILERTEST_EPRINT;
+		for(i=0;i<TILER_MAX_NUM_BLOCKS;i++)
+			TilerMgr_Free(block[i].ssptr);
+		close(fd);
+		return error;
+	}
+
+	dump(bufinfo.num_blocks);
+	dump(bufinfo.offset);
+	for (i = 0; i < TILER_MAX_NUM_BLOCKS; i++) {
+		dump(bufinfo.blocks[i].ssptr);
+		size += bufinfo.blocks[i].dim.area.height;
+	}
+
+	vsptr[0] = (void *)mmap(0, size*PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, bufinfo.offset);
+	if ((unsigned long *)vsptr[0] == MAP_FAILED) {
+		TILERTEST_EPRINT;
+		close(fd2);
+	}
+	memset(vsptr[0], 0x0, size*PAGESIZE);
+
+	dump(vsptr[0]);
+	physptr = TilerMgr_VirtToPhys(vsptr[0]);
 	dump(physptr);
-	write_buffer_data(b1.ptr, 176, 0xaaaaaaaa);
-	dump(0);
-	read_buffer_data(b1.ptr, 176);
-	dump(0);
+	
+	write_buffer_data(vsptr[0], 176, 0xaaaaaaaa);
+	read_buffer_data(vsptr[0], 176);
 
-	physptr = TILERMGR_VirtToPhys(b1.ptr+0x400);
-	fprintf(stdout, "%s::%s():%d: physptr -> 0x%lx\n", __FILE__, __func__, __LINE__, physptr); fflush(stdout);
+	dump(vsptr[0]+0x1000);
+	physptr = TilerMgr_VirtToPhys(vsptr[0]+0x1000);
+	dump(physptr);
 
-	dump(0);
-	write_buffer_data(b1.ptr+0x400, 176, 0xbbbbbbbb);
-	dump(0);
-	read_buffer_data(b1.ptr+0x400, 176);
-	dump(0);
-	read_buffer_data(b1.ptr, b1.dim.area.height*PAGESIZE);
-#endif
+	write_buffer_data(vsptr[0]+0x1000, 176, 0xbbbbbbbb);
+	read_buffer_data(vsptr[0]+0x1000, 176);
+
+	read_buffer_data(vsptr[0], 3*PAGESIZE);
 
 	dump(0);
-	for (i = 0; i < TILERTEST_COUNT; i++) {
-		error = TilerMgr_Free(ssptr[i]);
+	for (i = 0; i < TILER_MAX_NUM_BLOCKS; i++) {
+		error = TilerMgr_Free(block[i].ssptr);
 		if (error != TILERMGR_ERR_NONE)
-			fprintf(stderr, "%s::%s():%d:F!\n", __FILE__, __func__, __LINE__); fflush(stderr);
-		dump(ssptr[i]);
+			TILERTEST_EPRINT;
+		dump(block[i].ssptr);
 	}
 
 	dump(0);
 	error = TilerMgr_Close();
 	if (error != TILERMGR_ERR_NONE)
-		fprintf(stderr, "%s::%s():%d:F!\n", __FILE__, __func__, __LINE__); fflush(stderr);
+		TILERTEST_EPRINT;
 
 	error = destroylist(lsthd);
-	if (error != -1)
-		fprintf(stderr, "%s::%s():%d:F!\n", __FILE__, __func__, __LINE__); fflush(stderr); return -1;
+	if (error != 0)
+		TILERTEST_EPRINT; return -1;
 
 	return 0;
 }
@@ -147,7 +183,7 @@ static void write_buffer_data(void *ptr, unsigned long len, unsigned long data)
 	unsigned long *ptmp = NULL;
 	int i = -1;
     
-	fprintf(stdout, "%s::%s():%d\n", __FILE__, __func__, __LINE__); fflush(stdout);
+	dump(0);
 	ptmp = (unsigned long *)ptr;
     
 	if (ptmp != NULL) {
@@ -157,7 +193,7 @@ static void write_buffer_data(void *ptr, unsigned long len, unsigned long data)
 		}
 	}
 	else {
-		fprintf(stderr, "%s::%s():%d:F!\n", __FILE__, __func__, __LINE__); fflush(stderr);
+		TILERTEST_EPRINT;
 	}
 }
 
@@ -166,7 +202,8 @@ static void read_buffer_data(void *ptr, unsigned long len)
 	unsigned long *ptmp = NULL;
 	int i = -1;
 
-	fprintf(stdout, "%s::%s():%d: ptr -> %p, len = %ld\n", __FILE__, __func__, __LINE__, ptr, len); fflush(stdout);
+	dump(ptr);
+	dump(len);
 	ptmp = (unsigned long *)ptr;
     
 	if (ptmp != NULL) {
@@ -176,7 +213,7 @@ static void read_buffer_data(void *ptr, unsigned long len)
 		}
 	}
 	else {
-		fprintf(stderr, "%s::%s():%d:F!\n", __FILE__, __func__, __LINE__); fflush(stderr);
+		TILERTEST_EPRINT;
 	}
 }
 
@@ -186,16 +223,13 @@ static int createlist(struct node **listhead)
     void *ret = NULL;
 
     *listhead = (struct node *)malloc(sizeof(struct node));
-    if (*listhead == NULL)
-    {
-        fprintf(stderr, "createlist error\n");
-        fflush(stderr);
+    if (*listhead == NULL) {
+        TILERTEST_EPRINT;
         return error;
     }
     ret = memset(*listhead, 0x0, sizeof(struct node));
     if (ret != *listhead) {
-        fprintf(stderr, "memset():fail\n");
-        fflush(stderr);
+        TILERTEST_EPRINT;
         return error;
     }
     else {    
@@ -216,20 +250,17 @@ static int addnode(struct node *listhead, struct node *node)
     assert(listhead != NULL);
     newnode = (struct node *)malloc(sizeof(struct node));
     if (newnode == NULL) {
-        fprintf(stderr, "addnode error\n");
-        fflush(stderr);
+        TILERTEST_EPRINT;
         return error;
     }
     ret = memset(newnode, 0x0, sizeof(struct node));
     if (ret != newnode) {
-        fprintf(stderr, "memset():fail\n");
-        fflush(stderr);
+        TILERTEST_EPRINT;
         return error;
     }
     ret = memcpy(newnode, node, sizeof(struct node));
     if (ret != newnode) {
-        fprintf(stderr, "memcpy():fail\n");
-        fflush(stderr);
+        TILERTEST_EPRINT;
         return error;
     }   
     tmpnode = listhead;
