@@ -56,7 +56,7 @@ bytes_t TilerMem_GetStride(SSPtr ssptr)
 SSPtr TilerMem_VirtToPhys(void *ptr)
 {
 #ifndef __STUB_TILER__
-    return TilerMgr_VirtToPhys(ptr);
+    return R_P(TilerMgr_VirtToPhys(ptr));
 #else
     return (SSPtr)ptr;
 #endif

@@ -33,7 +33,7 @@
 typedef struct tiler_block_info tiler_block_info;
 
 #define __DEBUG__
-#undef  __DEBUG_ENTRY__
+#define __DEBUG_ENTRY__
 #define __DEBUG_ASSERT__
 
 #include "utils.h"
@@ -240,9 +240,15 @@ static void buf_cache_add(void *bufPtr, bytes_t size, uint32_t tiler_id,
 static uint32_t buf_cache_query(void *ptr, int buf_type_mask,
                                 void **bufPtr)
 {
+    DP("in(p=%p,t=%d,bp*=%p)", ptr, buf_type_mask, bufPtr);
     _AllocData *ad;
     pthread_mutex_lock(&che_mutex);
     DLIST_MLOOP(bufs, ad, link) {
+        DP("got(%p-%p,%d)", ad->bufPtr, ad->bufPtr + ad->size, ad->buf_type);
+        CHK_P(ad->bufPtr,<=,ptr);
+        CHK_P(ptr,<,ad->bufPtr + ad->size);
+        CHK_I(ad->buf_type & buf_type_mask,!=,0);
+        CHK_P(bufPtr,!=,0);
         if ((ad->buf_type & buf_type_mask) &&
             ad->bufPtr <= ptr && ptr < ad->bufPtr + ad->size) {
             if (bufPtr)
@@ -251,11 +257,11 @@ static uint32_t buf_cache_query(void *ptr, int buf_type_mask,
             }
             uint32_t tiler_id = ad->tiler_id;
             pthread_mutex_unlock(&che_mutex);
-            return tiler_id;
+            return R_UP(tiler_id);
         }
     }
     pthread_mutex_unlock(&che_mutex);
-    return 0;
+    return R_UP(0);
 }
 
 /**
@@ -903,7 +909,7 @@ bytes_t MemMgr_GetStride(void *ptr)
     buf.offset = buf_cache_query(ptr, BUF_ALLOCED | BUF_MAPPED, &bufPtr);
 
     /* for tiler mapped buffers, get saved stride information */
-    if (buf.offset == 0)
+    if (buf.offset)
     {
         /* get block information for the buffer */
         dump_buf(&buf, "==(QBUF)=>");
