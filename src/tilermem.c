@@ -39,6 +39,8 @@
 #include "tilermgr.h"
 
 enum tiler_fmt tiler_get_fmt(SSPtr ssptr);
+int inc_ref();
+int dec_ref();
 
 bytes_t TilerMem_GetStride(SSPtr ssptr)
 {
@@ -56,7 +58,13 @@ bytes_t TilerMem_GetStride(SSPtr ssptr)
 SSPtr TilerMem_VirtToPhys(void *ptr)
 {
 #ifndef __STUB_TILER__
-    return R_P(TilerMgr_VirtToPhys(ptr));
+    SSPtr ssptr = 0;
+    if(A_I(inc_ref(),==,0))
+    {
+        ssptr = TilerMgr_VirtToPhys(ptr);
+        A_I(dec_ref(),==,0);
+    }
+    return R_P(ssptr);
 #else
     return (SSPtr)ptr;
 #endif

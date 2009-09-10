@@ -130,7 +130,7 @@ static void init()
  * 
  * @return 0 on success, non-0 error value on failure.
  */
-static int inc_ref()
+int inc_ref()
 {
     /* initialize tiler on first call */
     pthread_mutex_lock(&ref_mutex);
@@ -167,7 +167,7 @@ static int inc_ref()
  * 
  * @return 0 on success, non-0 error value on failure.
  */
-static int dec_ref()
+int dec_ref()
 {
     pthread_mutex_lock(&ref_mutex);
 
@@ -911,6 +911,8 @@ bytes_t MemMgr_GetStride(void *ptr)
     /* for tiler mapped buffers, get saved stride information */
     if (buf.offset)
     {
+        A_I(inc_ref(),==,0);
+
         /* get block information for the buffer */
         dump_buf(&buf, "==(QBUF)=>");
         int ix, ret = A_I(ioctl(td, TILIOC_QBUF, &buf),==,0);
@@ -921,10 +923,13 @@ bytes_t MemMgr_GetStride(void *ptr)
         for (ix = 0; ix < buf.num_blocks; ix++)
         {
             bytes_t size = def_size(buf.blocks + ix);
-            if (bufPtr <= ptr && ptr < bufPtr + size)
+            if (bufPtr <= ptr && ptr < bufPtr + size) {
+                A_I(dec_ref(),==,0);
                 return R_UP(buf.blocks[ix].stride);
+            }
             bufPtr += size;
         }
+        A_I(dec_ref(),==,0);
         DP("assert: should not ever get here");
         return R_UP(0);
     }
