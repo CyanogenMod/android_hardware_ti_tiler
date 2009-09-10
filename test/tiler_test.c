@@ -101,6 +101,7 @@ int main(int argc, const char *argv[])
 		TILERTEST_EPRINT;
 		for(i=0;i<TILER_MAX_NUM_BLOCKS;i++)
 			TilerMgr_Free(block[i].ssptr);
+<<<<<<< HEAD:test/tiler_test.c
 		return error;
 	}
 
@@ -120,6 +121,12 @@ int main(int argc, const char *argv[])
 	bufinfo.offset = offset;
 	
 	ret = ioctl(fd, TILIOC_QBUF, (unsigned long)(&bufinfo));
+=======
+		return error;
+	}
+
+	ret = ioctl(fd, TILIOC_RBUF, (unsigned long)(&bufinfo));
+>>>>>>> memmgr_dev:test/tiler_test.c
 	if (ret == -1) {
 		TILERTEST_EPRINT;
 		for(i=0;i<TILER_MAX_NUM_BLOCKS;i++)
@@ -127,6 +134,7 @@ int main(int argc, const char *argv[])
 		close(fd);
 		return error;
 	}
+<<<<<<< HEAD:test/tiler_test.c
 
 	dump(bufinfo.num_blocks);
 	dump(bufinfo.offset);
@@ -150,8 +158,42 @@ int main(int argc, const char *argv[])
 
 	dump(0);
 	physptr = TilerMgr_VirtToPhys(vsptr[0]);
+=======
 
+	dump(bufinfo.offset);
+	offset = bufinfo.offset;
+
+	memset(&bufinfo, 0x0, sizeof(struct tiler_buf_info));
+	bufinfo.offset = offset;
+	
+	ret = ioctl(fd, TILIOC_QBUF, (unsigned long)(&bufinfo));
+	if (ret == -1) {
+		TILERTEST_EPRINT;
+		for(i=0;i<TILER_MAX_NUM_BLOCKS;i++)
+			TilerMgr_Free(block[i].ssptr);
+		close(fd);
+		return error;
+	}
+
+	dump(bufinfo.num_blocks);
+	dump(bufinfo.offset);
+	for (i = 0; i < TILER_MAX_NUM_BLOCKS; i++) {
+		dump(bufinfo.blocks[i].ssptr);
+		size += bufinfo.blocks[i].dim.area.height;
+	}
+
+	vsptr[0] = (void *)mmap(0, size*PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, bufinfo.offset);
+	if ((unsigned long *)vsptr[0] == MAP_FAILED) {
+		TILERTEST_EPRINT;
+		close(fd2);
+	}
+	memset(vsptr[0], 0x0, size*PAGESIZE);
+>>>>>>> memmgr_dev:test/tiler_test.c
+
+	dump(vsptr[0]);
+	physptr = TilerMgr_VirtToPhys(vsptr[0]);
 	dump(physptr);
+<<<<<<< HEAD:test/tiler_test.c
 	write_buffer_data(vsptr[0], 176, 0xaaaaaaaa);
 	dump(0);
 	read_buffer_data(vsptr[0], 176);
@@ -166,6 +208,20 @@ int main(int argc, const char *argv[])
 	read_buffer_data(vsptr[0]+0x400, 176);
 	dump(0);
 	read_buffer_data(vsptr[0], 6*PAGESIZE);
+=======
+	
+	write_buffer_data(vsptr[0], 176, 0xaaaaaaaa);
+	read_buffer_data(vsptr[0], 176);
+
+	dump(vsptr[0]+0x1000);
+	physptr = TilerMgr_VirtToPhys(vsptr[0]+0x1000);
+	dump(physptr);
+
+	write_buffer_data(vsptr[0]+0x1000, 176, 0xbbbbbbbb);
+	read_buffer_data(vsptr[0]+0x1000, 176);
+
+	read_buffer_data(vsptr[0], 3*PAGESIZE);
+>>>>>>> memmgr_dev:test/tiler_test.c
 
 	dump(0);
 	for (i = 0; i < TILER_MAX_NUM_BLOCKS; i++) {
