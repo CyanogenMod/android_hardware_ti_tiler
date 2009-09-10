@@ -28,6 +28,7 @@
 #include <tiler.h>
 #include "tilermgr.h"
 #include "mem_types.h"
+#include "utils.h"
 
 extern int errno;
 
@@ -85,6 +86,7 @@ int TilerMgr_Open()
         free(block); block = NULL; close(fd);
         return TILERMGR_ERR_GENERIC;
     }
+
     return TILERMGR_ERR_NONE;
 }
 

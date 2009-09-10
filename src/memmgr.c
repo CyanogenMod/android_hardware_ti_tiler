@@ -508,7 +508,7 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
 
 #else
     /* save buffer in stub */
-    struct tiler_buf_info *buf_c = NEW(struct tiler_buf_info);
+    struct tiler_buf_info *buf_c = NEWN(struct tiler_buf_info,2);
     buf.offset = (uint32_t) buf_c;
 #endif        
     if (NOT_P(buf.offset,!=,0)) return NULL;
@@ -517,9 +517,12 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
 #ifndef __STUB_TILER__
     void *bufPtr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED,
                         td, buf.offset);
+    bufPtr += buf.blocks[0].ssptr & (PAGE_SIZE - 1);
     DP("ptr=%p", bufPtr);
 #else
-    void *bufPtr = malloc(size);
+    void *bufPtr = malloc(size + PAGE_SIZE - 1);
+    buf_c[1].blocks[0].ptr = bufPtr;
+    bufPtr = (void *)((PAGE_SIZE - 1 + (uint32_t)bufPtr) &~ (PAGE_SIZE - 1));
     /* P("<= [0x%lx]", size); */
 
     /* fill out pointers - this is needed for caching 1D/2D type */
@@ -556,6 +559,8 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
             size += def_size(blks + ix);
 #ifdef __STUB_TILER__
             blks[ix].ssptr = (uint32_t) blks[ix].ptr;
+#else
+            blks[ix].ptr = (void *)((((uint32_t)blks[ix].ptr) & ~(PAGE_SIZE - 1)) | (blks[ix].ssptr & (PAGE_SIZE - 1)));
 #endif
         }
     }
@@ -858,7 +863,8 @@ int MemMgr_UnMap(void *bufPtr)
             ERR_ADD(ret, munmap(bufPtr, size));
         }
 #else
-        void *ptr = (void *) buf.offset;
+        struct tiler_buf_info *ptr = (struct tiler_buf_info *) buf.offset;
+        FREE(ptr[1].blocks[0].ptr);
         FREE(ptr);
         ret = MEMMGR_ERR_NONE;
 #endif
@@ -908,11 +914,11 @@ bytes_t MemMgr_GetStride(void *ptr)
     void *bufPtr = NULL;
     buf.offset = buf_cache_query(ptr, BUF_ALLOCED | BUF_MAPPED, &bufPtr);
 
+    A_I(inc_ref(),==,0);
+
     /* for tiler mapped buffers, get saved stride information */
     if (buf.offset)
     {
-        A_I(inc_ref(),==,0);
-
         /* get block information for the buffer */
         dump_buf(&buf, "==(QBUF)=>");
         int ix, ret = A_I(ioctl(td, TILIOC_QBUF, &buf),==,0);
@@ -934,10 +940,12 @@ bytes_t MemMgr_GetStride(void *ptr)
         return R_UP(0);
     }
     /* see if pointer is valid */
-    else if (TilerMgr_VirtToPhys(ptr) == 0)
+    else if (TilerMem_VirtToPhys(ptr) == 0)
     {
+        A_I(dec_ref(),==,0);
         return R_UP(0);
     }
+    A_I(dec_ref(),==,0);
 #else
     /* if emulating, we need to get through all allocated memory segments */
     pthread_mutex_lock(&che_mutex);
@@ -962,6 +970,34 @@ bytes_t MemMgr_GetStride(void *ptr)
     pthread_mutex_unlock(&che_mutex);
 #endif
     return R_UP(PAGE_SIZE);
+}
+
+bytes_t TilerMem_GetStride(SSPtr ssptr)
+{
+    IN;
+    switch(tiler_get_fmt(ssptr))
+    {
+    case TILFMT_8BIT:  return R_UP(TILER_STRIDE_8BIT);
+    case TILFMT_16BIT: return R_UP(TILER_STRIDE_16BIT);
+    case TILFMT_32BIT: return R_UP(TILER_STRIDE_32BIT);
+    case TILFMT_PAGE:  return R_UP(PAGE_SIZE);
+    default:           return R_UP(0);
+    }
+}
+
+SSPtr TilerMem_VirtToPhys(void *ptr)
+{
+#ifndef __STUB_TILER__
+    SSPtr ssptr = 0;
+    if(!NOT_I(inc_ref(),==,0))
+    {
+        ssptr = TilerMgr_VirtToPhys(ptr);
+        A_I(dec_ref(),==,0);
+    }
+    return R_P(ssptr);
+#else
+    return (SSPtr)ptr;
+#endif
 }
 
 /**
@@ -1026,4 +1062,5 @@ int __test__MemMgr()
 
     return ret;
 }
+
 
