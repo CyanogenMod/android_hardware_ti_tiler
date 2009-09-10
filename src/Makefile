@@ -4,7 +4,6 @@ PUBLIC_HDR=tilermgr.h memmgr.h tilermem.h mem_types.h
 
 SRC=\
 	memmgr.c\
-	tilermem.c\
 	tilermgr.c
 
 INCLUDE+=$(patsubst %,-I%,$(subst :, ,$(INCPATH)))

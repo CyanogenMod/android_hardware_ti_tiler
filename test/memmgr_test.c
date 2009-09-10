@@ -19,6 +19,8 @@
 #define __DEBUG_ENTRY__
 #define __DEBUG_ASSERT__
 
+#undef __WRITE_IN_STRIDE__
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -111,6 +113,10 @@
     T(maxalloc_NV12_test(1920, 1080))\
     T(maxmap_1D_test(1920 * 1080 * 2))\
     T(star_test(1000, 10))\
+    T(alloc_2D_test(8193, 16, PIXEL_FMT_8BIT))\
+    T(alloc_2D_test(8193, 16, PIXEL_FMT_16BIT))\
+    T(alloc_2D_test(8193, 16, PIXEL_FMT_32BIT))\
+    T(alloc_2D_test(8192, 16, PIXEL_FMT_32BIT))\
 
 /* this is defined in memmgr.c, but not exported as it is for internal 
    use only */
@@ -142,7 +148,7 @@ void fill_mem(uint16_t start, MemAllocBlock *block)
     if (block->pixelFormat == PIXEL_FMT_PAGE)
     {
         height = 1;
-        stride = width = block->dim.len;      
+        stride = width = block->dim.len;
     }
     else
     {
@@ -151,26 +157,63 @@ void fill_mem(uint16_t start, MemAllocBlock *block)
         stride = block->stride;
     }
     width *= def_bpp(block->pixelFormat);
+    bytes_t size = height * stride;
 
-    /* P("(%p,0x%x*0x%x,s=0x%x)", block->ptr, width, height, stride); */
+    P("(%p,0x%x*0x%x,s=0x%x)", block->ptr, width, height, stride);
 
     A_I(width,<=,stride);
+    uint32_t *ptr32 = (uint32_t *)ptr;
     while (height--)
     {
-        for (i = 0; i < width; i += sizeof(uint16_t))
+        if (block->pixelFormat == PIXEL_FMT_32BIT)
         {
-            *ptr++ = start;
-            start += delta;
-            delta += step;
-            /* increase step if overflown */
-            if (delta < step) delta = ++step;
+            for (i = 0; i < width; i += sizeof(uint32_t))
+            {
+                uint32_t val = (start & 0xFFFF) | (((uint32_t)(start + delta) & 0xFFFF) << 16);
+                *ptr32++ = val;
+                start += delta;
+                delta += step;
+                /* increase step if overflown */
+                if (delta < step) delta = ++step;
+                start += delta;
+                delta += step;
+                /* increase step if overflown */
+                if (delta < step) delta = ++step;
+            }
+#ifdef __WRITE_IN_STRIDE__
+            while (i < stride && (height || ((PAGE_SIZE - 1) & (uint32_t)ptr32)))
+            {
+                *ptr32++ = 0;
+                i += sizeof(uint32_t);
+            }
+#else
+            ptr32 += (stride - i) / sizeof(uint32_t);
+#endif
         }
-        while (i < stride)
+        else
         {
-            *ptr++ = 0;
-            i += sizeof(uint16_t);
+            for (i = 0; i < width; i += sizeof(uint16_t))
+            {
+                *ptr++ = start;
+                start += delta;
+                delta += step;
+                /* increase step if overflown */
+                if (delta < step) delta = ++step;
+            }
+#ifdef __WRITE_IN_STRIDE__
+            while (i < stride && (height || ((PAGE_SIZE - 1) & (uint32_t)ptr)))
+            {
+                *ptr++ = 0;
+                i += sizeof(uint16_t);
+            }
+#else
+            ptr += (stride - i) / sizeof(uint16_t);
+#endif
+
         }
     }
+    A_P((block->pixelFormat == PIXEL_FMT_32BIT ? ptr32 : ptr),==,
+        (block->ptr + size));
     OUT;
 }
 
@@ -204,26 +247,65 @@ int check_mem(uint16_t start, MemAllocBlock *block)
     width *= def_bpp(block->pixelFormat);
 
     A_I(width,<=,stride);
+    uint32_t *ptr32 = (uint32_t *)ptr;
     for (r = 0; r < height; r++)
     {
-        for (i = 0; i < width; i += sizeof(uint16_t))
+        if (block->pixelFormat == PIXEL_FMT_32BIT)
         {
-            if (*ptr++ != start) {
-                DP("assert: val[%u,%u] (=0x%x) != 0x%x", r, i, *--ptr, start);
-                return R_I(MEMMGR_ERR_GENERIC);
+            for (i = 0; i < width; i += sizeof(uint32_t))
+            {
+                uint32_t val = (start & 0xFFFF) | (((uint32_t)(start + delta) & 0xFFFF) << 16);
+                if (*ptr32++ != val) {
+                    DP("assert: val[%u,%u] (=0x%x) != 0x%x", r, i, *--ptr32, val);
+                    return R_I(MEMMGR_ERR_GENERIC);
+                }
+                start += delta;
+                delta += step;
+                /* increase step if overflown */
+                if (delta < step) delta = ++step;
+                start += delta;
+                delta += step;
+                /* increase step if overflown */
+                if (delta < step) delta = ++step;
             }
-            start += delta;
-            delta += step;
-            /* increase step if overflown */
-            if (delta < step) delta = ++step;
+#ifdef __WRITE_IN_STRIDE__
+            while (i < stride && ((r < height - 1) || ((PAGE_SIZE - 1) & (uint32_t)ptr32)))
+            {
+                if (*ptr32++) {
+                    DP("assert: val[%u,%u] (=0x%x) != 0", r, i, *--ptr32);
+                    return R_I(MEMMGR_ERR_GENERIC);
+                }
+                i += sizeof(uint32_t);
+            }
+#else
+            ptr32 += (stride - i) / sizeof(uint32_t);
+#endif
         }
-        while (i < stride)
+        else
         {
-            if (*ptr++) {
-                DP("assert: val[%u,%u] (=0x%x) != 0", r, i, *--ptr);
-                return R_I(MEMMGR_ERR_GENERIC);
+            for (i = 0; i < width; i += sizeof(uint16_t))
+            {
+                if (*ptr++ != start) {
+                    DP("assert: val[%u,%u] (=0x%x) != 0x%x", r, i, *--ptr, start);
+                    return R_I(MEMMGR_ERR_GENERIC);
+                }
+                start += delta;
+                delta += step;
+                /* increase step if overflown */
+                if (delta < step) delta = ++step;
             }
-            i += sizeof(uint16_t);
+#ifdef __WRITE_IN_STRIDE__
+            while (i < stride && ((r < height - 1) || ((PAGE_SIZE - 1) & (uint32_t)ptr)))
+            {
+                if (*ptr++) {
+                    DP("assert: val[%u,%u] (=0x%x) != 0", r, i, *--ptr);
+                    return R_I(MEMMGR_ERR_GENERIC);
+                }
+                i += sizeof(uint16_t);
+            }
+#else
+            ptr += (stride - i) / sizeof(uint16_t);
+#endif
         }
     }
     return R_I(MEMMGR_ERR_NONE);
@@ -266,7 +348,8 @@ void *alloc_1D(bytes_t length, bytes_t stride, uint16_t val)
             NOT_I(MemMgr_Is2DBlock(bufPtr),==,0) ||
             NOT_I(MemMgr_GetStride(bufPtr),==,block.stride) ||
             NOT_P(TilerMem_VirtToPhys(bufPtr),==,block.reserved) ||
-            NOT_I(TilerMem_GetStride(TilerMem_VirtToPhys(bufPtr)),==,PAGE_SIZE))
+            NOT_I(TilerMem_GetStride(TilerMem_VirtToPhys(bufPtr)),==,PAGE_SIZE) ||
+            NOT_L((PAGE_SIZE - 1) & (long)bufPtr,==,(PAGE_SIZE - 1) & block.reserved))
         {
             MemMgr_Free(bufPtr);
             return NULL;
@@ -352,7 +435,8 @@ void *alloc_2D(pixels_t width, pixels_t height, pixel_fmt_t fmt, bytes_t stride,
             NOT_I(block.stride,!=,0) ||
             NOT_I(MemMgr_GetStride(bufPtr),==,block.stride) ||
             NOT_P(TilerMem_VirtToPhys(bufPtr),==,block.reserved) ||
-            NOT_I(TilerMem_GetStride(TilerMem_VirtToPhys(bufPtr)),==,cstride))
+            NOT_I(TilerMem_GetStride(TilerMem_VirtToPhys(bufPtr)),==,cstride) ||
+            NOT_L((PAGE_SIZE - 1) & (long)bufPtr,==,(PAGE_SIZE - 1) & block.reserved))
         {
             MemMgr_Free(bufPtr);
             return NULL;
@@ -446,7 +530,9 @@ void *alloc_NV12(pixels_t width, pixels_t height, uint16_t val)
             NOT_P(TilerMem_VirtToPhys(bufPtr),==,blocks[0].reserved) ||
             NOT_P(TilerMem_VirtToPhys(buf2),==,blocks[1].reserved) ||
             NOT_I(TilerMem_GetStride(TilerMem_VirtToPhys(bufPtr)),==,TILER_STRIDE_8BIT) ||
-            NOT_I(TilerMem_GetStride(TilerMem_VirtToPhys(buf2)),==,TILER_STRIDE_16BIT))
+            NOT_I(TilerMem_GetStride(TilerMem_VirtToPhys(buf2)),==,TILER_STRIDE_16BIT) ||
+            NOT_L((PAGE_SIZE - 1) & (long)blocks[0].ptr,==,(PAGE_SIZE - 1) & blocks[0].reserved) ||
+            NOT_L((PAGE_SIZE - 1) & (long)blocks[1].ptr,==,(PAGE_SIZE - 1) & blocks[1].reserved))
         {
             MemMgr_Free(bufPtr);
             return NULL;            
@@ -541,7 +627,9 @@ void *map_1D(void *dataPtr, bytes_t length, bytes_t stride, uint16_t val)
             NOT_I(MemMgr_Is2DBlock(bufPtr),==,0) ||
             NOT_I(MemMgr_GetStride(bufPtr),==,block.stride) ||
             NOT_P(TilerMem_VirtToPhys(bufPtr),==,block.reserved) ||
-            NOT_I(TilerMem_GetStride(TilerMem_VirtToPhys(bufPtr)),==,PAGE_SIZE))
+            NOT_I(TilerMem_GetStride(TilerMem_VirtToPhys(bufPtr)),==,PAGE_SIZE) ||
+            NOT_L((PAGE_SIZE - 1) & (long)bufPtr,==,0) ||
+            NOT_L((PAGE_SIZE - 1) & block.reserved,==,0))
         {
             MemMgr_UnMap(bufPtr);
             return NULL;
