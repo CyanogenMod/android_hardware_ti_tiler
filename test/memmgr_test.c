@@ -115,8 +115,13 @@
     T(star_test(1000, 10))\
     T(alloc_2D_test(8193, 16, PIXEL_FMT_8BIT))\
     T(alloc_2D_test(8193, 16, PIXEL_FMT_16BIT))\
-    T(alloc_2D_test(8193, 16, PIXEL_FMT_32BIT))\
+    T(alloc_2D_test(4097, 16, PIXEL_FMT_32BIT))\
+    T(alloc_2D_test(16384, 16, PIXEL_FMT_8BIT))\
+    T(alloc_2D_test(16384, 16, PIXEL_FMT_16BIT))\
     T(alloc_2D_test(8192, 16, PIXEL_FMT_32BIT))\
+    T(alloc_2D_test(16385, 16, PIXEL_FMT_8BIT))\
+    T(alloc_2D_test(16385, 16, PIXEL_FMT_16BIT))\
+    T(alloc_2D_test(8193, 16, PIXEL_FMT_32BIT))\
 
 /* this is defined in memmgr.c, but not exported as it is for internal 
    use only */
@@ -1046,6 +1051,7 @@ int star_test(uint32_t num_ops, uint16_t num_slots)
             switch ((op >> 4) & 15)
             {
             case 0: case 1: case 2: case 3: /* map 1D buffer */
+#if 0
                 mem[ix].op = 0;
                 /* allocate aligned buffer */
                 mem[ix].length = (mem[ix].length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
@@ -1057,10 +1063,13 @@ int star_test(uint32_t num_ops, uint16_t num_slots)
                     if (!mem[ix].bufPtr) FREE(mem[ix].buffer);
                 }                
                 break;
+#endif
             case 4: case 5: case 6:
+#if 0
                 mem[ix].op = 1;
                 mem[ix].bufPtr = alloc_1D(mem[ix].length, 0, mem[ix].val);
                 break;
+#endif
             case 7: case 8:
                 mem[ix].op = 2;
                 mem[ix].bufPtr = alloc_2D(mem[ix].width, mem[ix].height, PIXEL_FMT_8BIT, 0, mem[ix].val);

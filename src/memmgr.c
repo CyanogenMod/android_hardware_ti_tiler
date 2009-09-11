@@ -517,7 +517,11 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
 #ifndef __STUB_TILER__
     void *bufPtr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED,
                         td, buf.offset);
-    bufPtr += buf.blocks[0].ssptr & (PAGE_SIZE - 1);
+    if (bufPtr == MAP_FAILED){
+        bufPtr = NULL;
+    } else {
+        bufPtr += buf.blocks[0].ssptr & (PAGE_SIZE - 1);
+    }
     DP("ptr=%p", bufPtr);
 #else
     void *bufPtr = malloc(size + PAGE_SIZE - 1);
