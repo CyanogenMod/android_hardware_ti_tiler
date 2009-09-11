@@ -39,21 +39,19 @@ extern int errno;
 	fprintf(stderr, "errno(%d) - \"%s\"\n", errno, strerror(errno));       \
 	fflush(stderr);
 
-static struct tiler_block_info *block;
 static int fd;
 
 int TilerMgr_Close()
 {
     int ret = -1;
+    struct tiler_block_info block = {0};
+    int fd = 0;
 
-    ret = ioctl(fd, TILIOC_CLOSE, (unsigned long)block);
+    ret = ioctl(fd, TILIOC_CLOSE, (unsigned long)(&block));
     if (ret == -1)
         TILERMGR_ERROR("ioctl():fail");
 
     close(fd);
-
-    if (block != NULL)
-        free(block);
 
     if (ret == -1)
         return TILERMGR_ERR_GENERIC;
@@ -64,7 +62,7 @@ int TilerMgr_Close()
 int TilerMgr_Open()
 {
     int ret = -1;
-    void *ptr = NULL;
+    struct tiler_block_info block = {0};
 
     fd = open(TILER_DEVICE_PATH, O_RDWR);
     if (fd < 0) {
@@ -72,18 +70,10 @@ int TilerMgr_Open()
         return TILERMGR_ERR_GENERIC;
     }
 
-    block = (struct tiler_block_info *)malloc(sizeof(struct tiler_block_info));
-    ptr = memset(block, 0x0, sizeof(struct tiler_block_info));
-    if ((struct tiler_block_info *)ptr != block) {
-        TILERMGR_ERROR("memset():fail");
-        free(block); block = NULL; close(fd);
-        return TILERMGR_ERR_GENERIC;
-    }
-
-    ret = ioctl(fd, TILIOC_OPEN, (unsigned long)block);
+    ret = ioctl(fd, TILIOC_OPEN, (unsigned long)(&block));
     if (ret == -1) {
         TILERMGR_ERROR("ioctl():fail");
-        free(block); block = NULL; close(fd);
+        close(fd);
         return TILERMGR_ERR_GENERIC;
     }
 
@@ -93,6 +83,8 @@ int TilerMgr_Open()
 SSPtr TilerMgr_Alloc(enum pixel_fmt_t pf, pixels_t w, pixels_t h)
 {
     int ret = -1;
+    struct tiler_block_info block = {0};
+    
     if (pf < PIXEL_FMT_8BIT || pf > PIXEL_FMT_32BIT)
         return 0x0;
     if (w <= 0 || w > TILER_WIDTH * 64)
@@ -100,28 +92,29 @@ SSPtr TilerMgr_Alloc(enum pixel_fmt_t pf, pixels_t w, pixels_t h)
     if (h <= 0 || h > TILER_HEIGHT * 64)
         return 0x0;
 
-    block->fmt = pf;
-    block->dim.area.width = w;
-    block->dim.area.height = h;
+    block.fmt = pf;
+    block.dim.area.width = w;
+    block.dim.area.height = h;
 
-    ret = ioctl(fd, TILIOC_GBUF, (unsigned long)block);
+    ret = ioctl(fd, TILIOC_GBUF, (unsigned long)(&block));
     if (ret < 0) {
         TILERMGR_ERROR("ioctl():fail");
         return 0x0;
     }
-    return block->ssptr;
+    return block.ssptr;
 }
 
 int TilerMgr_Free(SSPtr s)
 {
     int ret = TILERMGR_ERR_GENERIC;
+    struct tiler_block_info block = {0};
 
     if (s < TILER_MEM_8BIT || s >= TILER_MEM_PAGED)
         return TILERMGR_ERR_GENERIC;
     
-    block->ssptr = s;
+    block.ssptr = s;
 
-    ret = ioctl(fd, TILIOC_FBUF, (unsigned long)block);
+    ret = ioctl(fd, TILIOC_FBUF, (unsigned long)(&block));
     if (ret < 0) {
         TILERMGR_ERROR("ioctl():fail");
         return TILERMGR_ERR_GENERIC;
@@ -132,31 +125,33 @@ int TilerMgr_Free(SSPtr s)
 SSPtr TilerMgr_PageModeAlloc(bytes_t len)
 {
     int ret = -1;
+    struct tiler_block_info block = {0};
 
     if(len < 0 || len > TILER_LENGTH)
         return 0x0;
 
-    block->fmt = TILFMT_PAGE;
-    block->dim.len = len;
+    block.fmt = TILFMT_PAGE;
+    block.dim.len = len;
 
-    ret = ioctl(fd, TILIOC_GBUF, (unsigned long)block);
+    ret = ioctl(fd, TILIOC_GBUF, (unsigned long)(&block));
     if (ret < 0) {
         TILERMGR_ERROR("ioctl():fail");
         return TILERMGR_ERR_GENERIC;
     }
-    return block->ssptr;
+    return block.ssptr;
 }
 
 int TilerMgr_PageModeFree(SSPtr s)
 {
     int ret = -1;
+    struct tiler_block_info block = {0};
 
     if (s < TILER_MEM_PAGED || s >= TILER_MEM_END)
         return TILERMGR_ERR_GENERIC;
     
-    block->ssptr = s;
+    block.ssptr = s;
 
-    ret = ioctl(fd, TILIOC_FBUF, (unsigned long)block);
+    ret = ioctl(fd, TILIOC_FBUF, (unsigned long)(&block));
     if (ret < 0) {
         TILERMGR_ERROR("ioctl():fail");
         return TILERMGR_ERR_GENERIC;
@@ -167,17 +162,18 @@ int TilerMgr_PageModeFree(SSPtr s)
 SSPtr TilerMgr_VirtToPhys(void *ptr)
 {
     int ret = -1;
+    struct tiler_block_info block = {0};
 
     if(ptr == NULL) 
         return 0x0;
 
-    block->ptr = ptr;
+    block.ptr = ptr;
 
-    ret = ioctl(fd, TILIOC_GSSP, (unsigned long)block);
+    ret = ioctl(fd, TILIOC_GSSP, (unsigned long)(&block));
     if (ret < 0) {
         TILERMGR_ERROR("ioctl():fail");
         return 0x0;
     }
-    return block->ssptr;
+    return block.ssptr;
 }
 
