@@ -350,6 +350,6 @@ int main(int argc, char **argv)
     test_ezlist();
     test_plist();
     test_mlist();
-    OUT;
+    return R_I(0);
 }
 

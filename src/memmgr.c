@@ -33,7 +33,7 @@
 typedef struct tiler_block_info tiler_block_info;
 
 #define __DEBUG__
-#define __DEBUG_ENTRY__
+#undef __DEBUG_ENTRY__
 #define __DEBUG_ASSERT__
 
 #include "utils.h"
@@ -79,6 +79,7 @@ static pthread_mutex_t che_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
 {
+#if 1
     switch (blk->fmt)
     {
     case PIXEL_FMT_PAGE:
@@ -96,16 +97,19 @@ static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
         P("%s*[p=%p(0x%lx),l=0x%lx,s=%ld,fmt=0x%x]%s", prefix, blk->ptr,
           blk->ssptr, blk->dim.len, blk->stride, blk->fmt, suffix);
     }
+#endif
 }
 
 static void dump_buf(struct tiler_buf_info* buf, char* prefix)
 {
+#if 0
     P("%sbuf={n=%d,id=0x%x,", prefix, buf->num_blocks, buf->offset);
     int ix = 0;
     for (ix = 0; ix < buf->num_blocks; ix++)
     {
         dump_block(buf->blocks + ix, "", ix + 1 == buf->num_blocks ? "}" : "");
     }
+#endif
 }
 
 /**
@@ -142,7 +146,6 @@ int inc_ref()
         init();
 #ifndef __STUB_TILER__
         td = open("/dev/tiler", O_RDWR | O_SYNC);
-        DP("td=%d", td);
         if (NOT_I(td,>=,0)) res = MEMMGR_ERR_GENERIC;
         ERR_ADD(res, TilerMgr_Open());
 #else
@@ -240,11 +243,12 @@ static void buf_cache_add(void *bufPtr, bytes_t size, uint32_t tiler_id,
 static uint32_t buf_cache_query(void *ptr, int buf_type_mask,
                                 void **bufPtr)
 {
-    DP("in(p=%p,t=%d,bp*=%p)", ptr, buf_type_mask, bufPtr);
+    IN;
+    if(0) DP("in(p=%p,t=%d,bp*=%p)", ptr, buf_type_mask, bufPtr);
     _AllocData *ad;
     pthread_mutex_lock(&che_mutex);
     DLIST_MLOOP(bufs, ad, link) {
-        DP("got(%p-%p,%d)", ad->bufPtr, ad->bufPtr + ad->size, ad->buf_type);
+        if(0) DP("got(%p-%p,%d)", ad->bufPtr, ad->bufPtr + ad->size, ad->buf_type);
         CHK_P(ad->bufPtr,<=,ptr);
         CHK_P(ptr,<,ad->bufPtr + ad->size);
         CHK_I(ad->buf_type & buf_type_mask,!=,0);
@@ -373,7 +377,7 @@ enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
  */
 static SSPtr tiler_alloc(struct tiler_block_info *blk)
 {
-    dump_block(blk, "=(ta)=>", "");
+    if (0) dump_block(blk, "=(ta)=>", "");
     blk->ptr = NULL;
     if (blk->fmt == PIXEL_FMT_PAGE)
     {
@@ -384,6 +388,7 @@ static SSPtr tiler_alloc(struct tiler_block_info *blk)
         blk->ssptr = TilerMgr_Alloc(blk->fmt, blk->dim.area.width, blk->dim.area.height);
         blk->stride = def_stride(blk->dim.area.width * def_bpp(blk->fmt));
     }
+    dump_block(blk, "alloced: ", "");
     return R_UP(blk->ssptr);
 }
 
@@ -522,7 +527,7 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
     } else {
         bufPtr += buf.blocks[0].ssptr & (PAGE_SIZE - 1);
     }
-    DP("ptr=%p", bufPtr);
+    if(0) DP("ptr=%p", bufPtr);
 #else
     void *bufPtr = malloc(size + PAGE_SIZE - 1);
     buf_c[1].blocks[0].ptr = bufPtr;

@@ -16,7 +16,7 @@
 
 /* retrieve type definitions */
 #define __DEBUG__
-#define __DEBUG_ENTRY__
+#undef __DEBUG_ENTRY__
 #define __DEBUG_ASSERT__
 
 #undef __WRITE_IN_STRIDE__
@@ -33,6 +33,8 @@
 #include "../src/memmgr_common.c"
 
 #define FALSE 0
+
+#define MAX_ALLOCS 10
 
 #define TESTS\
     T(alloc_1D_test(4096, 0))\
@@ -76,42 +78,46 @@
     T(neg_map_tests())\
     T(neg_unmap_tests())\
     T(neg_check_tests())\
-    T(maxalloc_1D_test(4096))\
-    T(maxalloc_2D_test(64, 64, PIXEL_FMT_8BIT))\
-    T(maxalloc_2D_test(64, 64, PIXEL_FMT_16BIT))\
-    T(maxalloc_2D_test(64, 64, PIXEL_FMT_32BIT))\
-    T(maxalloc_NV12_test(64, 64))\
-    T(maxmap_1D_test(4096))\
-    T(maxalloc_1D_test(176 * 144 * 2))\
-    T(maxalloc_2D_test(176, 144, PIXEL_FMT_8BIT))\
-    T(maxalloc_2D_test(176, 144, PIXEL_FMT_16BIT))\
-    T(maxalloc_2D_test(176, 144, PIXEL_FMT_32BIT))\
-    T(maxalloc_NV12_test(176, 144))\
-    T(maxmap_1D_test(176 * 144 * 2))\
-    T(maxalloc_1D_test(640 * 480 * 2))\
-    T(maxalloc_2D_test(640, 480, PIXEL_FMT_8BIT))\
-    T(maxalloc_2D_test(640, 480, PIXEL_FMT_16BIT))\
-    T(maxalloc_2D_test(640, 480, PIXEL_FMT_32BIT))\
-    T(maxalloc_NV12_test(640, 480))\
-    T(maxmap_1D_test(640 * 480 * 2))\
-    T(maxalloc_1D_test(848 * 480 * 2))\
-    T(maxalloc_2D_test(848, 480, PIXEL_FMT_8BIT))\
-    T(maxalloc_2D_test(848, 480, PIXEL_FMT_16BIT))\
-    T(maxalloc_2D_test(848, 480, PIXEL_FMT_32BIT))\
-    T(maxalloc_NV12_test(848, 480))\
-    T(maxmap_1D_test(848 * 480 * 2))\
-    T(maxalloc_1D_test(1280 * 720 * 2))\
-    T(maxalloc_2D_test(1280, 720, PIXEL_FMT_8BIT))\
-    T(maxalloc_2D_test(1280, 720, PIXEL_FMT_16BIT))\
-    T(maxalloc_2D_test(1280, 720, PIXEL_FMT_32BIT))\
-    T(maxalloc_NV12_test(1280, 720))\
-    T(maxmap_1D_test(1280 * 720 * 2))\
-    T(maxalloc_1D_test(1920 * 1080 * 2))\
-    T(maxalloc_2D_test(1920, 1080, PIXEL_FMT_8BIT))\
-    T(maxalloc_2D_test(1920, 1080, PIXEL_FMT_16BIT))\
-    T(maxalloc_2D_test(1920, 1080, PIXEL_FMT_32BIT))\
-    T(maxalloc_NV12_test(1920, 1080))\
-    T(maxmap_1D_test(1920 * 1080 * 2))\
+    T(maxalloc_1D_test(4096, MAX_ALLOCS))\
+    T(maxalloc_2D_test(64, 64, PIXEL_FMT_8BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(64, 64, PIXEL_FMT_16BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(64, 64, PIXEL_FMT_32BIT, MAX_ALLOCS))\
+    T(maxalloc_NV12_test(64, 64, MAX_ALLOCS))\
+    T(maxmap_1D_test(4096, MAX_ALLOCS))\
+    T(maxalloc_1D_test(176 * 144 * 2, MAX_ALLOCS))\
+    T(maxalloc_2D_test(176, 144, PIXEL_FMT_8BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(176, 144, PIXEL_FMT_16BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(176, 144, PIXEL_FMT_32BIT, MAX_ALLOCS))\
+    T(maxalloc_NV12_test(176, 144, MAX_ALLOCS))\
+    T(map_1D_test(176 * 144 * 2, MAX_ALLOCS))\
+    T(maxalloc_1D_test(640 * 480 * 2, MAX_ALLOCS))\
+    T(maxalloc_2D_test(640, 480, PIXEL_FMT_8BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(640, 480, PIXEL_FMT_16BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(640, 480, PIXEL_FMT_32BIT, MAX_ALLOCS))\
+    T(maxalloc_NV12_test(640, 480, MAX_ALLOCS))\
+    T(maxmap_1D_test(640 * 480 * 2, MAX_ALLOCS))\
+    T(maxalloc_1D_test(848 * 480 * 2, MAX_ALLOCS))\
+    T(maxalloc_2D_test(848, 480, PIXEL_FMT_8BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(848, 480, PIXEL_FMT_16BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(848, 480, PIXEL_FMT_32BIT, MAX_ALLOCS))\
+    T(maxalloc_NV12_test(848, 480, MAX_ALLOCS))\
+    T(maxmap_1D_test(848 * 480 * 2, MAX_ALLOCS))\
+    T(maxalloc_1D_test(1280 * 720 * 2, MAX_ALLOCS))\
+    T(maxalloc_2D_test(1280, 720, PIXEL_FMT_8BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(1280, 720, PIXEL_FMT_16BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(1280, 720, PIXEL_FMT_32BIT, MAX_ALLOCS))\
+    T(maxalloc_NV12_test(1280, 720, MAX_ALLOCS))\
+    T(maxmap_1D_test(1280 * 720 * 2, MAX_ALLOCS))\
+    T(maxalloc_1D_test(1920 * 1080 * 2, MAX_ALLOCS))\
+    T(maxalloc_2D_test(1920, 1080, PIXEL_FMT_8BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(1920, 1080, PIXEL_FMT_16BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(1920, 1080, PIXEL_FMT_32BIT, MAX_ALLOCS))\
+    T(maxalloc_NV12_test(1920, 1080, 2))\
+    T(maxalloc_NV12_test(1920, 1080, MAX_ALLOCS))\
+    T(maxmap_1D_test(1920 * 1080 * 2, MAX_ALLOCS))\
+    T(star_tiler_test(1000, 10))\
+    T(star_tiler_test(1000, 30))\
+    T(star_test(100, 10))\
     T(star_test(1000, 10))\
     T(alloc_2D_test(8193, 16, PIXEL_FMT_8BIT))\
     T(alloc_2D_test(8193, 16, PIXEL_FMT_16BIT))\
@@ -119,9 +125,9 @@
     T(alloc_2D_test(16384, 16, PIXEL_FMT_8BIT))\
     T(alloc_2D_test(16384, 16, PIXEL_FMT_16BIT))\
     T(alloc_2D_test(8192, 16, PIXEL_FMT_32BIT))\
-    T(alloc_2D_test(16385, 16, PIXEL_FMT_8BIT))\
-    T(alloc_2D_test(16385, 16, PIXEL_FMT_16BIT))\
-    T(alloc_2D_test(8193, 16, PIXEL_FMT_32BIT))\
+    T(!alloc_2D_test(16385, 16, PIXEL_FMT_8BIT))\
+    T(!alloc_2D_test(16385, 16, PIXEL_FMT_16BIT))\
+    T(!alloc_2D_test(8193, 16, PIXEL_FMT_32BIT))\
 
 /* this is defined in memmgr.c, but not exported as it is for internal 
    use only */
@@ -166,7 +172,7 @@ void fill_mem(uint16_t start, MemAllocBlock *block)
 
     P("(%p,0x%x*0x%x,s=0x%x)", block->ptr, width, height, stride);
 
-    A_I(width,<=,stride);
+    CHK_I(width,<=,stride);
     uint32_t *ptr32 = (uint32_t *)ptr;
     while (height--)
     {
@@ -217,8 +223,8 @@ void fill_mem(uint16_t start, MemAllocBlock *block)
 
         }
     }
-    A_P((block->pixelFormat == PIXEL_FMT_32BIT ? ptr32 : ptr),==,
-        (block->ptr + size));
+    CHK_P((block->pixelFormat == PIXEL_FMT_32BIT ? (void *)ptr32 : (void *)ptr),==,
+          (block->ptr + size));
     OUT;
 }
 
@@ -251,7 +257,7 @@ int check_mem(uint16_t start, MemAllocBlock *block)
     }
     width *= def_bpp(block->pixelFormat);
 
-    A_I(width,<=,stride);
+    CHK_I(width,<=,stride);
     uint32_t *ptr32 = (uint32_t *)ptr;
     for (r = 0; r < height; r++)
     {
@@ -546,7 +552,7 @@ void *alloc_NV12(pixels_t width, pixels_t height, uint16_t val)
         fill_mem(val, blocks);
         fill_mem(val, blocks + 1);
     } else {
-        A_I(blocks[1].ptr,==,NULL);
+        CHK_P(blocks[1].ptr,==,NULL);
     }
 
     return bufPtr;
@@ -770,8 +776,6 @@ int map_1D_test(bytes_t length, bytes_t stride)
     return res;
 }
 
-#define MAX_ALLOCS 10
-
 /**
  * This method tests the allocation and freeing of a number of 
  * 1D tiled buffers (up to MAX_ALLOCS)
@@ -782,7 +786,7 @@ int map_1D_test(bytes_t length, bytes_t stride)
  * 
  * @return 0 on success, non-0 error value on failure 
  */
-int maxalloc_1D_test(bytes_t length)
+int maxalloc_1D_test(bytes_t length, int max_allocs)
 {
     printf("Allocate & Free max # of %ub 1D buffers\n", length);
 
@@ -792,10 +796,10 @@ int maxalloc_1D_test(bytes_t length)
     } *mem;
 
     /* allocate as many buffers as we can */
-    mem = NEWN(struct data, MAX_ALLOCS);
+    mem = NEWN(struct data, max_allocs);
     void *ptr = (void *)mem;
     int ix, res = 0;
-    for (ix = 0; ptr && ix < MAX_ALLOCS; ix++)
+    for (ix = 0; ptr && ix < max_allocs; ix++)
     {
         uint16_t val = (uint16_t) rand();
         ptr = alloc_1D(length, 0, val);
@@ -828,7 +832,7 @@ int maxalloc_1D_test(bytes_t length)
  * 
  * @return 0 on success, non-0 error value on failure 
  */
-int maxalloc_2D_test(pixels_t width, pixels_t height, pixel_fmt_t fmt)
+int maxalloc_2D_test(pixels_t width, pixels_t height, pixel_fmt_t fmt, int max_allocs)
 {
     printf("Allocate & Free max # of %ux%ux%ub 1D buffers\n", width, height, def_bpp(fmt));
 
@@ -838,10 +842,10 @@ int maxalloc_2D_test(pixels_t width, pixels_t height, pixel_fmt_t fmt)
     } *mem;
 
     /* allocate as many buffers as we can */
-    mem = NEWN(struct data, MAX_ALLOCS);
+    mem = NEWN(struct data, max_allocs);
     void *ptr = (void *)mem;
     int ix, res = 0;
-    for (ix = 0; ptr && ix < MAX_ALLOCS; ix++)
+    for (ix = 0; ptr && ix < max_allocs; ix++)
     {
         uint16_t val = (uint16_t) rand();
         ptr = alloc_2D(width, height, fmt, 0, val);
@@ -873,7 +877,7 @@ int maxalloc_2D_test(pixels_t width, pixels_t height, pixel_fmt_t fmt)
  * 
  * @return 0 on success, non-0 error value on failure 
  */
-int maxalloc_NV12_test(pixels_t width, pixels_t height)
+int maxalloc_NV12_test(pixels_t width, pixels_t height, int max_allocs)
 {
     printf("Allocate & Free max # of %ux%u NV12 buffers\n", width, height);
 
@@ -883,10 +887,10 @@ int maxalloc_NV12_test(pixels_t width, pixels_t height)
     } *mem;
 
     /* allocate as many buffers as we can */
-    mem = NEWN(struct data, MAX_ALLOCS);
+    mem = NEWN(struct data, max_allocs);
     void *ptr = (void *)mem;
     int ix, res = 0;
-    for (ix = 0; ptr && ix < MAX_ALLOCS; ix++)
+    for (ix = 0; ptr && ix < max_allocs; ix++)
     {
         uint16_t val = (uint16_t) rand();
         ptr = alloc_NV12(width, height, val);
@@ -917,7 +921,7 @@ int maxalloc_NV12_test(pixels_t width, pixels_t height)
  * 
  * @return 0 on success, non-0 error value on failure 
  */
-int maxmap_1D_test(bytes_t length)
+int maxmap_1D_test(bytes_t length, int max_maps)
 {
     length = (length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
     printf("Map & UnMap max # of %xb 1D buffers\n", length);
@@ -928,10 +932,10 @@ int maxmap_1D_test(bytes_t length)
     } *mem;
 
     /* map as many buffers as we can */
-    mem = NEWN(struct data, MAX_ALLOCS);
+    mem = NEWN(struct data, max_maps);
     void *ptr = (void *)mem;
     int ix, res = 0;
-    for (ix = 0; ptr && ix < MAX_ALLOCS; ix++)
+    for (ix = 0; ptr && ix < max_maps; ix++)
     {
         /* allocate aligned buffer */
         void *ptr = malloc(length + PAGE_SIZE - 1);
@@ -1109,6 +1113,144 @@ int star_test(uint32_t num_ops, uint16_t num_slots)
             }
         }
     }
+    FREE(mem);
+
+    return res;
+}
+
+#include <tilermgr.h>
+/**
+ * This stress tests allocates/maps/frees/unmaps buffers at 
+ * least num_ops times.  The test maintains a set of slots that 
+ * are initially NULL.  For each operation, a slot is randomly 
+ * selected.  If the slot is not used, it is filled randomly 
+ * with a 1D, 2D, NV12 or mapped buffer.  If it is used, the 
+ * slot is cleared by freeing/unmapping the buffer already 
+ * there.  The buffers are filled on alloc/map and this is 
+ * checked on free/unmap to verify that there was no memory 
+ * corruption.  Failed allocation and maps are ignored as we may
+ * run out of memory.  The return value is the first error code 
+ * encountered, or 0 on success.
+ *  
+ * This test sets the seed so that it produces reproducible 
+ * results. 
+ *  
+ * @author a0194118 (9/7/2009)
+ * 
+ * @param num_ops    Number of operations to perform
+ * @param num_slots  Number of slots to maintain
+ * 
+ * @return 0 on success, non-0 error value on failure 
+ */
+int star_tiler_test(uint32_t num_ops, uint16_t num_slots)
+{
+    printf("Random set of %d tiler Allocs/Maps and Frees/UnMaps for %d slots\n", num_ops, num_slots);
+    srand(0x4B72316A);
+    struct data {
+        int      op;
+        SSPtr    ssptr;
+        void    *buffer;
+        void    *dataPtr;
+    } *mem;
+
+    /* allocate memory state */
+    mem = NEWN(struct data, num_slots);
+    if (!mem) return NOT_P(mem,!=,NULL);
+
+    /* perform alloc/free/unmaps */
+    int ix, res = TilerMgr_Open();
+    while (!res && num_ops--)
+    {
+        ix = rand() % num_slots;
+        /* see if we need to free/unmap data */
+        if (mem[ix].ssptr)
+        {
+            switch (mem[ix].op)
+            {
+            case 0: /*
+            res = unmap_1D(mem[ix].dataPtr, mem[ix].length, 0, mem[ix].val, mem[ix].bufPtr); */
+                FREE(mem[ix].buffer);
+                break;
+            case 1:
+                P("free [0x%x]", mem[ix].ssptr);
+                res = TilerMgr_PageModeFree(mem[ix].ssptr); break;
+            case 2: case 3: case 4:
+                P("free [0x%x]", mem[ix].ssptr);
+                res = TilerMgr_Free(mem[ix].ssptr); break;
+            }
+            ZERO(mem[ix]);
+        }
+        /* we need to allocate/map data */
+        else
+        {
+            int op = rand();
+            /* set width */
+            pixels_t width, height;          
+            switch ("AAAABBBBCCCDDEEF"[op & 15]) {
+            case 'F': width = 1920; height = 1080; break;
+            case 'E': width = 1280; height = 720; break;
+            case 'D': width = 640; height = 480; break;
+            case 'C': width = 848; height = 480; break;
+            case 'B': width = 176; height = 144; break;
+            case 'A': width = height = 64; break;
+            }
+            bytes_t length = (bytes_t)width * height;
+
+            /* perform operation */
+            mem[ix].op = "BBBBBBBCCCCDDDDE"[(op >> 4) & 15] - 'A';
+            switch (mem[ix].op)
+            {
+            case 0: /* map 1D buffer */
+#if 0
+                mem[ix].op = 0;
+                /* allocate aligned buffer */
+                mem[ix].length = (mem[ix].length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
+                mem[ix].buffer = malloc(mem[ix].length + PAGE_SIZE - 1);
+                if (mem[ix].buffer)
+                {
+                    mem[ix].dataPtr = (void *)(((uint32_t)mem[ix].buffer + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1));
+                    mem[ix].bufPtr = map_1D(mem[ix].dataPtr, mem[ix].length, 0, mem[ix].val);
+                    if (!mem[ix].bufPtr) FREE(mem[ix].buffer);
+                }                
+                break;
+#endif
+            case 1:
+                mem[ix].ssptr = TilerMgr_PageModeAlloc(length);
+                P("alloc[l=0x%x] = 0x%x", length, mem[ix].ssptr);
+                break;
+            case 2:
+                mem[ix].ssptr = TilerMgr_Alloc(PIXEL_FMT_8BIT, width, height);
+                P("alloc[%d*%d*8] = 0x%x", width, height, mem[ix].ssptr);
+                break;
+            case 3:
+                mem[ix].ssptr = TilerMgr_Alloc(PIXEL_FMT_16BIT, width, height);
+                P("alloc[%d*%d*16] = 0x%x", width, height, mem[ix].ssptr);
+                break;
+            case 4:
+                mem[ix].ssptr = TilerMgr_Alloc(PIXEL_FMT_32BIT, width, height);
+                P("alloc[%d*%d*32] = 0x%x", width, height, mem[ix].ssptr);
+                break;
+            }
+        }
+    }
+
+    /* unmap and free everything */
+    for (ix = 0; ix < num_slots; ix++)
+    {
+        if (mem[ix].ssptr)
+        {
+            /* check memory fill */
+            switch (mem[ix].op)
+            {
+            case 0: /* ERR_ADD(res, unmap_1D(mem[ix].dataPtr, mem[ix].length, 0, mem[ix].val, mem[ix].bufPtr)); */
+                FREE(mem[ix].buffer);
+                break;
+            case 1: ERR_ADD(res, TilerMgr_PageModeFree(mem[ix].ssptr)); break;
+            default: ERR_ADD(res, TilerMgr_Free(mem[ix].ssptr)); break;
+            }
+        }
+    }
+    ERR_ADD(res, TilerMgr_Close());
     FREE(mem);
 
     return res;
