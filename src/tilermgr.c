@@ -45,7 +45,6 @@ int TilerMgr_Close()
 {
     int ret = -1;
     struct tiler_block_info block = {0};
-    int fd = 0;
 
     ret = ioctl(fd, TILIOC_CLOSE, (unsigned long)(&block));
     if (ret == -1)
