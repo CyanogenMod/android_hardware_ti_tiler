@@ -38,6 +38,8 @@
 #define TILERTEST_MEM_PAGED 0x78000000
 #define TILERTEST_MEM_END   0x80000000
 
+#define TILERTEST_BUF_COUNT 1
+
 #define dump(x) fprintf(stdout, "%s::%s():%d: %lx\n", \
 		__FILE__, __func__, __LINE__, (unsigned long)x); fflush(stdout);
 #define TILERTEST_EPRINT \
@@ -55,74 +57,106 @@ struct node {
 
 static void read_buffer_data(void *p, unsigned long len);
 static void write_buffer_data(void *p, unsigned long len, unsigned long data);
-static int removenode(struct node *listhead, void *p);
+static int createlist(struct node **listhead);
 static int destroylist(struct node *listhead);
+#if 0
 static int addnode(struct node *listhead, struct node *n);
 static int getnode(struct node *listhead, struct node **npp, void *p);
-static int createlist(struct node **listhead);
+static int removenode(struct node *listhead, void *p);
+#endif
 
 int main(int argc, const char *argv[])
 {
 	int error = TILERMGR_ERR_GENERIC;
 	struct tiler_block_info block[TILER_MAX_NUM_BLOCKS];
-	struct tiler_buf_info bufinfo;
+	struct tiler_buf_info bufinfo = {0};
 	int fd = 0;
-	int fd2 = 0;
-	SSPtr physptr = 0x0;
-	SSPtr ssptr[TILER_MAX_NUM_BLOCKS] = {0};
-	void *vsptr[TILER_MAX_NUM_BLOCKS] = {NULL};
+	void *vsptr = NULL;
 	int i = 0;
+	int j = 0;
 	int ret = -1;
 	int offset = 0;
+	int numblocks = 0;
 	unsigned long size = 0;
+	unsigned long *ptr = NULL;
+	char *cp = NULL;
 
 	assert(TilerMgr_Open() == 0);
 	assert(createlist(&lsthd) == 0);
 	dump(0);
 
-	for (i = 0; i < TILER_MAX_NUM_BLOCKS; i++) 
+	for (i = 0; i < TILER_MAX_NUM_BLOCKS; i++)
+		memset(&(block[i]), 0x0, sizeof(struct tiler_block_info));
+
+	for (i = 0; i < TILERTEST_BUF_COUNT; i++) 
 	{
 		block[i].fmt = TILFMT_8BIT;
-		block[i].dim.area.width = 176;
-		block[i].dim.area.height = 144;
+		block[i].dim.area.width = 1920;
+		block[i].dim.area.height = 1088;
 		block[i].ssptr = TilerMgr_Alloc(block[i].fmt, block[i].dim.area.width, block[i].dim.area.height);
-		if (block[i].ssptr == 0x0)
+		if (block[i].ssptr == 0x0) {
 			TILERTEST_EPRINT;
+			return error;
+		}
 		dump(block[i].ssptr);
-		bufinfo.num_blocks = i+1;
+		bufinfo.num_blocks++;
 		bufinfo.blocks[i].fmt = block[i].fmt;
 		bufinfo.blocks[i].dim.area.width = block[i].dim.area.width;
 		bufinfo.blocks[i].dim.area.height = block[i].dim.area.height;
 		bufinfo.blocks[i].ssptr = block[i].ssptr;
 	}
 
+	dump(bufinfo.num_blocks);
+	for (;i < TILERTEST_BUF_COUNT+1; i++) 
+	{
+		block[i].fmt = TILFMT_16BIT;
+		block[i].dim.area.width = 960;
+		block[i].dim.area.height = 1088;
+		block[i].ssptr = TilerMgr_Alloc(block[i].fmt, block[i].dim.area.width, block[i].dim.area.height);
+		if (block[i].ssptr == 0x0) {
+			TILERTEST_EPRINT; 
+			return error;
+		}
+		dump(block[i].ssptr);
+		bufinfo.num_blocks++;
+		bufinfo.blocks[i].fmt = block[i].fmt;
+		bufinfo.blocks[i].dim.area.width = block[i].dim.area.width;
+		bufinfo.blocks[i].dim.area.height = block[i].dim.area.height;
+		bufinfo.blocks[i].ssptr = block[i].ssptr;
+	}
+
+	dump(bufinfo.num_blocks);
 	fd = open("/dev/tiler", O_RDWR | O_SYNC);
 	if (fd < 0) {
 		TILERTEST_EPRINT;
-		for(i=0;i<TILER_MAX_NUM_BLOCKS;i++)
+		for(i=0;i<bufinfo.num_blocks;i++)
 			TilerMgr_Free(block[i].ssptr);
 		return error;
 	}
 
+	dump(0);
 	ret = ioctl(fd, TILIOC_RBUF, (unsigned long)(&bufinfo));
 	if (ret == -1) {
 		TILERTEST_EPRINT;
-		for(i=0;i<TILER_MAX_NUM_BLOCKS;i++)
+		for(i=0;i<bufinfo.num_blocks;i++)
 			TilerMgr_Free(block[i].ssptr);
 		close(fd);
 		return error;
 	}
 
 	dump(bufinfo.offset);
+	dump(bufinfo.num_blocks);
 	offset = bufinfo.offset;
+	numblocks = bufinfo.num_blocks;
 
 	memset(&bufinfo, 0x0, sizeof(struct tiler_buf_info));
 	bufinfo.offset = offset;
+	bufinfo.num_blocks = numblocks;
 	
 	ret = ioctl(fd, TILIOC_QBUF, (unsigned long)(&bufinfo));
 	if (ret == -1) {
 		TILERTEST_EPRINT;
-		for(i=0;i<TILER_MAX_NUM_BLOCKS;i++)
+		for(i=0;i<bufinfo.num_blocks;i++)
 			TilerMgr_Free(block[i].ssptr);
 		close(fd);
 		return error;
@@ -130,36 +164,61 @@ int main(int argc, const char *argv[])
 
 	dump(bufinfo.num_blocks);
 	dump(bufinfo.offset);
-	for (i = 0; i < TILER_MAX_NUM_BLOCKS; i++) {
+	for (i = 0; i < bufinfo.num_blocks; i++) {
 		dump(bufinfo.blocks[i].ssptr);
-		size += bufinfo.blocks[i].dim.area.height;
 	}
 
-	vsptr[0] = (void *)mmap(0, size*PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, bufinfo.offset);
-	if ((unsigned long *)vsptr[0] == MAP_FAILED) {
+	for (i = 0; i < bufinfo.num_blocks; i++) {
+		dump(bufinfo.blocks[i].dim.area.width);
+		dump(bufinfo.blocks[i].dim.area.height);
+		size += PAGESIZE * (((bufinfo.blocks[i].dim.area.width + 64 - 3) / 63) * ((bufinfo.blocks[i].dim.area.height + 64 - 3) / 63));
+	}
+	dump(size);
+
+	vsptr = (void *)mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, bufinfo.offset);
+	if ((unsigned long *)vsptr == MAP_FAILED) {
 		TILERTEST_EPRINT;
-		close(fd2);
+		close(fd);
 	}
-	memset(vsptr[0], 0x0, size*PAGESIZE);
+	memset(vsptr, 0x0, size);
+	ptr = (unsigned long *)vsptr;
+	dump(bufinfo.num_blocks);
+	for (i = 0; i < bufinfo.num_blocks; i++) {
+		for (j = 0; j < bufinfo.blocks[i].dim.area.height; j++) {
+			if (bufinfo.blocks[i].fmt == TILFMT_8BIT)
+				write_buffer_data((void *)ptr, bufinfo.blocks[i].dim.area.width, 0xaaaaaaaa);
+			else if (bufinfo.blocks[i].fmt == TILFMT_16BIT)
+				write_buffer_data((void *)ptr, bufinfo.blocks[i].dim.area.width, 0xccccbbbb);
+			else
+				TILERTEST_EPRINT;
+			fprintf(stdout, "[%d] :: fmt = %d, height = %d, width = %d, virtaddr = %p\n",
+				j,
+				bufinfo.blocks[i].fmt,
+				bufinfo.blocks[i].dim.area.height,
+				bufinfo.blocks[i].dim.area.width,
+				ptr);
+			fflush(stdout);
+			ptr+=0x400;
+		}
+	}
+	read_buffer_data(vsptr, size);
 
-	dump(vsptr[0]);
-	physptr = TilerMgr_VirtToPhys(vsptr[0]);
-	dump(physptr);
-	
-	write_buffer_data(vsptr[0], 176, 0xaaaaaaaa);
-	read_buffer_data(vsptr[0], 176);
-
-	dump(vsptr[0]+0x1000);
-	physptr = TilerMgr_VirtToPhys(vsptr[0]+0x1000);
-	dump(physptr);
-
-	write_buffer_data(vsptr[0]+0x1000, 176, 0xbbbbbbbb);
-	read_buffer_data(vsptr[0]+0x1000, 176);
-
-	read_buffer_data(vsptr[0], 3*PAGESIZE);
+	/* check TilerMgr_VirtToPhys() */
+	cp = (char *)vsptr;
+	for (i = 0; i < 256; i++) {
+		fprintf(stdout, "%s::%s():%d: %p\n", __FILE__, __func__, __LINE__, cp);
+		fflush(stdout);
+		cp++;
+	}
+	cp = (char *)vsptr;
+	for (i = 0; i < size; i++) {
+		fprintf(stdout, "%s::%s():%d: %p\n", __FILE__, __func__, __LINE__, (unsigned long *)TilerMgr_VirtToPhys((void *)cp));
+		fflush(stdout);
+		cp++;
+	}
 
 	dump(0);
-	for (i = 0; i < TILER_MAX_NUM_BLOCKS; i++) {
+	for (i = 0; i < bufinfo.num_blocks; i++) {
 		error = TilerMgr_Free(block[i].ssptr);
 		if (error != TILERMGR_ERR_NONE)
 			TILERTEST_EPRINT;
@@ -183,7 +242,6 @@ static void write_buffer_data(void *ptr, unsigned long len, unsigned long data)
 	unsigned long *ptmp = NULL;
 	int i = -1;
     
-	dump(0);
 	ptmp = (unsigned long *)ptr;
     
 	if (ptmp != NULL) {
@@ -202,8 +260,6 @@ static void read_buffer_data(void *ptr, unsigned long len)
 	unsigned long *ptmp = NULL;
 	int i = -1;
 
-	dump(ptr);
-	dump(len);
 	ptmp = (unsigned long *)ptr;
     
 	if (ptmp != NULL) {
@@ -240,6 +296,7 @@ static int createlist(struct node **listhead)
     return 0;
 }
 
+#if 0
 static int addnode(struct node *listhead, struct node *node)
 {
     int error = -1;
@@ -302,27 +359,6 @@ static int removenode(struct node *listhead, void *ptr)
     return -1;
 }
 
-static int destroylist(struct node *listhead)
-{
-    struct node *tmpnode = NULL;
-    struct node *node = NULL;
-
-    assert(listhead != NULL);
-    
-    node = listhead;
-
-    while (node->nextnode != NULL)
-    {
-        tmpnode = node->nextnode;
-        node->nextnode=tmpnode->nextnode;
-        free(tmpnode);
-        tmpnode = NULL;
-    }
-
-    free(listhead);
-    return 0;
-}
-
 static int getnode(struct node *listhead, struct node **nodepp, void *ptr)
 {
     struct node *node = NULL;
@@ -343,5 +379,28 @@ static int getnode(struct node *listhead, struct node **nodepp, void *ptr)
         node = node->nextnode;
     }
     return -1;
+}
+
+#endif
+
+static int destroylist(struct node *listhead)
+{
+    struct node *tmpnode = NULL;
+    struct node *node = NULL;
+
+    assert(listhead != NULL);
+    
+    node = listhead;
+
+    while (node->nextnode != NULL)
+    {
+        tmpnode = node->nextnode;
+        node->nextnode=tmpnode->nextnode;
+        free(tmpnode);
+        tmpnode = NULL;
+    }
+
+    free(listhead);
+    return 0;
 }
 
