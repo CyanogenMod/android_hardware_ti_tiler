@@ -37,10 +37,11 @@ typedef struct tiler_block_info tiler_block_info;
 #define __DEBUG_ASSERT__
 
 #include "utils.h"
+#include "list_utils.h"
+#include "debug_utils.h"
 #include "tilermem.h"
 #include "tilermem_utils.h"
 #include "memmgr.h"
-#include "memmgr_common.c"
 
 #ifdef __STUB_TILER__
 SSPtr TilerMgr_PageModeAlloc(bytes_t l) { return 1; }
@@ -78,41 +79,6 @@ static int refCnt = 0;
 static int td = -1;
 static pthread_mutex_t ref_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t che_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
-{
-#if 1
-    switch (blk->fmt)
-    {
-    case PIXEL_FMT_PAGE:
-        P("%s [p=%p(0x%lx),l=0x%lx,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
-          blk->dim.len, blk->stride, suffix);
-        break;
-    case PIXEL_FMT_8BIT:
-    case PIXEL_FMT_16BIT:
-    case PIXEL_FMT_32BIT:
-        P("%s [p=%p(0x%lx),%d*%d*%d,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
-          blk->dim.area.width, blk->dim.area.height, def_bpp(blk->fmt) * 8,
-          blk->stride, suffix);
-        break;
-    default:
-        P("%s*[p=%p(0x%lx),l=0x%lx,s=%ld,fmt=0x%x]%s", prefix, blk->ptr,
-          blk->ssptr, blk->dim.len, blk->stride, blk->fmt, suffix);
-    }
-#endif
-}
-
-static void dump_buf(struct tiler_buf_info* buf, char* prefix)
-{
-#if 0
-    P("%sbuf={n=%d,id=0x%x,", prefix, buf->num_blocks, buf->offset);
-    int ix = 0;
-    for (ix = 0; ix < buf->num_blocks; ix++)
-    {
-        dump_block(buf->blocks + ix, "", ix + 1 == buf->num_blocks ? "}" : "");
-    }
-#endif
-}
 
 /**
  * Initializes the static structures
@@ -189,6 +155,35 @@ int dec_ref()
 
     pthread_mutex_unlock(&ref_mutex);
     return res;
+}
+
+/**
+ * Returns the default page stride for this block
+ * 
+ * @author a0194118 (9/4/2009)
+ * 
+ * @param width  Width of 2D container
+ * 
+ * @return Stride
+ */
+static bytes_t def_stride(pixels_t width)
+{
+    return (PAGE_SIZE - 1 + (bytes_t)width) & ~(PAGE_SIZE - 1);
+}
+
+/**
+ * Returns the bytes per pixel for the pixel format.
+ * 
+ * @author a0194118 (9/4/2009)
+ * 
+ * @param pixelFormat   Pixelformat
+ * 
+ * @return Bytes per pixel
+ */
+static bytes_t def_bpp(pixel_fmt_t pixelFormat)
+{
+    return (pixelFormat == PIXEL_FMT_32BIT ? 4 :
+            pixelFormat == PIXEL_FMT_16BIT ? 2 : 1);
 }
 
 /**
@@ -322,6 +317,41 @@ static int cache_check()
 
     pthread_mutex_unlock(&che_mutex);
     return (num_bufs == refCnt) ? MEMMGR_ERR_NONE : MEMMGR_ERR_GENERIC;
+}
+
+static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
+{
+#if 1
+    switch (blk->fmt)
+    {
+    case PIXEL_FMT_PAGE:
+        P("%s [p=%p(0x%lx),l=0x%lx,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
+          blk->dim.len, blk->stride, suffix);
+        break;
+    case PIXEL_FMT_8BIT:
+    case PIXEL_FMT_16BIT:
+    case PIXEL_FMT_32BIT:
+        P("%s [p=%p(0x%lx),%d*%d*%d,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
+          blk->dim.area.width, blk->dim.area.height, def_bpp(blk->fmt) * 8,
+          blk->stride, suffix);
+        break;
+    default:
+        P("%s*[p=%p(0x%lx),l=0x%lx,s=%ld,fmt=0x%x]%s", prefix, blk->ptr,
+          blk->ssptr, blk->dim.len, blk->stride, blk->fmt, suffix);
+    }
+#endif
+}
+
+static void dump_buf(struct tiler_buf_info* buf, char* prefix)
+{
+#if 0
+    P("%sbuf={n=%d,id=0x%x,", prefix, buf->num_blocks, buf->offset);
+    int ix = 0;
+    for (ix = 0; ix < buf->num_blocks; ix++)
+    {
+        dump_block(buf->blocks + ix, "", ix + 1 == buf->num_blocks ? "}" : "");
+    }
+#endif
 }
 
 /**

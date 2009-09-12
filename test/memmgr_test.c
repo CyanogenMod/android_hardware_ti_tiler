@@ -27,10 +27,12 @@
 #include <stdint.h>
 
 #include <utils.h>
+#include <list_utils.h>
+#include <debug_utils.h>
 #include <memmgr.h>
 #include <tilermem.h>
 #include <tilermem_utils.h>
-#include "../src/memmgr_common.c"
+#include <testlib.h>
 
 #define FALSE 0
 #define TESTERR_NOTIMPLEMENTED -65378
@@ -133,6 +135,35 @@
 /* this is defined in memmgr.c, but not exported as it is for internal 
    use only */
 extern int __test__MemMgr();
+
+/**
+ * Returns the default page stride for this block
+ * 
+ * @author a0194118 (9/4/2009)
+ * 
+ * @param width  Width of 2D container
+ * 
+ * @return Stride
+ */
+static bytes_t def_stride(pixels_t width)
+{
+    return (PAGE_SIZE - 1 + (bytes_t)width) & ~(PAGE_SIZE - 1);
+}
+
+/**
+ * Returns the bytes per pixel for the pixel format.
+ * 
+ * @author a0194118 (9/4/2009)
+ * 
+ * @param pixelFormat   Pixelformat
+ * 
+ * @return Bytes per pixel
+ */
+static bytes_t def_bpp(pixel_fmt_t pixelFormat)
+{
+    return (pixelFormat == PIXEL_FMT_32BIT ? 4 :
+            pixelFormat == PIXEL_FMT_16BIT ? 2 : 1);
+}
 
 /**
  * This method fills up a range of memory using a start address
@@ -1588,56 +1619,19 @@ int neg_check_tests()
     return ret;
 }
 
-/**
- * Prints test result and returns summary result
- * 
- * @author a0194118 (9/7/2009)
- * 
- * @param res    Test result
- * 
- * @return 0 on success, 1 on failure, TESTERR_NOTIMPLEMENTED if 
- *         test is not available
- */
-int result(int res)
-{
-    if (res)
-    {
-        if (res == TESTERR_NOTIMPLEMENTED)
-        {
-            printf("==> TEST NOT AVAILABLE\n", res);
-            return res;
-        }
-        else
-        {
-            printf("==> TEST FAIL(%d)\n", res);
-            return 1;
-        }
-    }
-    else
-    {
-        printf("==> TEST OK\n");
-        return 0;
-    }
-}
+DEFINE_TESTS(TESTS)
 
 /**
- * Runs a specified test by id.  This function uses the TESTS 
- * macros, and defines each T(test) to run a test starting from 
- * id == 1, and then return the result. 
+ * We run the same identity check before and after running the 
+ * tests. 
  * 
- * @author a0194118 (9/7/2009)
- * 
- * @param id   Test case id.
- * 
- * @return Summary result: 0 on success, 1 on failure, -1 on 
- *         invalid test case.
+ * @author a0194118 (9/12/2009)
  */
-int test(int id)
+void memmgr_identity_test(void *ptr)
 {
-    int i = id;
-    #define T(test) if (!--i) { printf("TEST #% 3d - %s\nTEST_DESC - ", id, #test); return result(test); }
-    TESTS
-    return -1;
+    /* also execute internal unit tests - this also verifies that we did not
+       keep any references */
+    __test__MemMgr();
 }
 
 /**
@@ -1654,71 +1648,7 @@ int test(int id)
  */
 int main(int argc, char **argv)
 {
-    int start = 1, end = -1, res, failed = 0, succeeded = 0, unavailable = 0;
-    char c;
-
-    /* all tests */
-    if (argc == 1)
-    {
-    }
-    /* test list */
-    else if (argc == 2 && !strcmp(argv[1], "list"))
-    {
-    #define T(test) printf("% 3d - %s\n", ++i, #test);
-        int i = 0;
-        TESTS
-        return -1;
-    }
-    /* single test */
-    else if (argc == 2 && sscanf(argv[1], "%u%c", &res, &c) == 1)
-    {
-        start = end = atoi(argv[1]);
-    }
-    /* open range .. b */
-    else if (argc == 3 && !strcmp(argv[1], "..") && sscanf(argv[2], "%u%c", &res, &c) == 1)
-    {
-        end = atoi(argv[2]);
-    }
-    /* open range a .. */
-    else if (argc == 3 && !strcmp(argv[2], "..") && sscanf(argv[1], "%u%c", &res, &c) == 1)
-    {
-        start = atoi(argv[1]);
-    }
-    else if (argc == 4 && !strcmp(argv[2], "..") && sscanf(argv[1], "%u%c", &res, &c) == 1 && sscanf(argv[3], "%u%c", &res, &c) == 1)
-    {
-        start = atoi(argv[1]);
-        end = atoi(argv[3]);
-    }
-    else
-    {
-        fprintf(stderr, "Usage: %s [<range>], where <range> is\n"
-                "   empty:   run all tests\n"
-                "   list:    list tests\n"
-                "   ix:      run test #ix\n"
-                "   a ..:    run tests #a, #a+1, ...\n"
-                "   .. b:    run tests #1, #2, .. #b\n"
-                "   a .. b:  run tests #a, #a+1, .. #b\n", argv[0]);
-        return -1;
-    }
-
-    /* execute internal unit tests */
-    __test__MemMgr();
-
-    do
-    {
-        res = test(start++);
-        if (res == 1) failed++;
-        else if (!res) succeeded++;
-        else if (res == TESTERR_NOTIMPLEMENTED) unavailable++;
-    } while (res != -1 && (end < 0 || start <= end));
-
-    printf("FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
-           unavailable);
-
-    /* also execute internal unit tests - this also verifies that we did not
-       keep any references */
-    __test__MemMgr();
-
-    return failed;
+    return TestLib_Run(argc, argv,
+                       memmgr_identity_test, memmgr_identity_test, NULL);
 }
 

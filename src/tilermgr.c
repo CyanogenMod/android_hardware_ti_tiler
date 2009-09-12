@@ -28,7 +28,6 @@
 #include <tiler.h>
 #include "tilermgr.h"
 #include "mem_types.h"
-#include "utils.h"
 
 extern int errno;
 

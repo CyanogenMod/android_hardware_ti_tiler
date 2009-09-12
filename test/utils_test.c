@@ -6,11 +6,25 @@
 #define __DEBUG_ASSERT__
 #define __DEBUG_ENTRY__
 
-#include "../src/utils.h"
+#include <utils.h>
+#include <list_utils.h>
+#include <debug_utils.h>
+#include "testlib.h"
+
+#define TESTS\
+    T(test_new())\
+    T(test_list())\
+    T(test_ezlist())\
+    T(test_dzlist())\
+    T(test_plist())\
+    T(test_mlist())
 
 #define F() in = head.next;
-#define N(a) A_I(in,!=,&head); A_I(in->me->data,==,a); in = in->next;
-#define L() A_I(in,==,&head);
+#define N(a) res |= NOT_P(in,!=,&head); \
+    res |= NOT_P(in->me,!=,NULL) || NOT_I(in->me->data,==,a); in = in->next;
+#define Z(a) res |= NOT_P(in,!=,&head); \
+    res |= NOT_I(in->data,==,a); in = in->next;
+#define L() res |= NOT_P(in,==,&head);
 
 int all_zero(int *p, int len)
 {
@@ -27,20 +41,23 @@ int all_zero(int *p, int len)
     return R_I(0);
 }
 
-void test_new() {
+int test_new() {
     IN;
     int *p;
     p = NEW(int);
-    A_I(all_zero(p, 1),==,0);
+    int res = NOT_I(all_zero(p, 1),==,0);
     FREE(p);
-    A_I(p,==,NULL);
-    p = NEWN(int,8000);
-    A_I(all_zero(p, 8000),==,0);
+    res |= NOT_I(p,==,NULL);
+    p = NEWN(int, 8000);
+    res |= NOT_I(all_zero(p, 8000),==,0);
     FREE(p);
-    OUT;
+    p = NEWN(int, 1000000);
+    res |= NOT_I(all_zero(p, 1000000),==,0);
+    FREE(p);
+    return R_I(res);
 }
 
-void test_list() {
+int test_list() {
     IN;
 
     struct elem {
@@ -53,7 +70,7 @@ void test_list() {
     
     /* initialization */
     DLIST_INIT(head);    
-    A_I(DLIST_IS_EMPTY(head),!=,0);
+    int res = NOT_I(DLIST_IS_EMPTY(head),!=,0);
 
     /* add element at beginning of list */
     elA = NEW(struct elem);
@@ -86,8 +103,8 @@ void test_list() {
     DLIST_MOVE_BEFORE(head, *inB);
     F()N(1)N(2)N(3)L();
 
-    A_I(DLIST_FIRST(head)->data,==,1);
-    A_I(DLIST_LAST(head)->data,==,3);
+    res |= NOT_I(DLIST_FIRST(head)->data,==,1);
+    res |= NOT_I(DLIST_LAST(head)->data,==,3);
 
     DLIST_LOOP(head, in) {
         P("%d", in->me->data);
@@ -113,10 +130,10 @@ void test_list() {
     }
     F()L();
 
-    OUT;
+    return R_I(res);
 }
 
-void test_ezlist() {
+int test_ezlist() {
     IN;
 
     struct elem {
@@ -126,7 +143,7 @@ void test_ezlist() {
     
     /* initialization */
     DLIST_INIT(head);    
-    A_I(DLIST_IS_EMPTY(head),!=,0);
+    int res = NOT_I(DLIST_IS_EMPTY(head),!=,0);
 
     /* add element at beginning of list */
     elA = NEW(struct elem);
@@ -156,8 +173,8 @@ void test_ezlist() {
     DLIST_MOVE_BEFORE(head, *elB);
     F()N(1)N(2)N(3)L();
 
-    A_I(DLIST_FIRST(head)->data,==,1);
-    A_I(DLIST_LAST(head)->data,==,3);
+    res |= NOT_I(DLIST_FIRST(head)->data,==,1);
+    res |= NOT_I(DLIST_LAST(head)->data,==,3);
 
     DLIST_LOOP(head, el) {
         P("%d", el->data);
@@ -181,10 +198,78 @@ void test_ezlist() {
     }
     F()L();
 
-    OUT;
+    return R_I(res);
 }
 
-void test_plist() {
+int test_dzlist() {
+    IN;
+
+    struct elem {
+        int data;
+        struct elem *last, *next;
+    } *elA, *elB, head, *el, *el_safe, *in;
+    
+    /* initialization */
+    DZLIST_INIT(head);    
+    int res = NOT_I(DZLIST_IS_EMPTY(head),!=,0);
+
+    /* add element at beginning of list */
+    elA = NEW(struct elem);
+    elA->data = 1;
+    DZLIST_ADD_AFTER(head, *elA);
+    F()Z(1)L();
+
+    /* add element after an element */
+    elB = NEW(struct elem);
+    elB->data = 2;
+    DZLIST_ADD_AFTER(*elA, *elB);
+    F()Z(1)Z(2)L();
+
+    /* add element at the end of the list */
+    elB = NEW(struct elem);
+    (DZLIST_ADD_BEFORE(head, *elB))->data = 3;
+    F()Z(1)Z(2)Z(3)L();
+
+    /* move an element to another position or another list */
+    DZLIST_MOVE_AFTER(head, *elB);
+    F()Z(3)Z(1)Z(2)L();
+
+    DZLIST_MOVE_BEFORE(head, *elB);
+    F()Z(1)Z(2)Z(3)L();
+
+    /* works even if the position is the same */
+    DZLIST_MOVE_BEFORE(head, *elB);
+    F()Z(1)Z(2)Z(3)L();
+
+    res |= NOT_I(DZLIST_FIRST(head)->data,==,1);
+    res |= NOT_I(DZLIST_LAST(head)->data,==,3);
+
+    DZLIST_LOOP(head, el) {
+        P("%d", el->data);
+    }
+    P(".");
+
+    /* remove elements */
+    DZLIST_SAFE_RLOOP(head, el, el_safe) {
+        if (el->data == 1)
+        {
+            DZLIST_REMOVE(*el);
+            FREE(el);
+        }
+    }
+    F()Z(2)Z(3)L();
+
+    /* delete list */
+    DZLIST_SAFE_LOOP(head, el, el_safe) {
+        DZLIST_REMOVE(*el);
+        FREE(el);
+    }
+    F()L();
+
+    return R_I(res);
+}
+
+int test_plist() {
     IN;
 
     struct elem;
@@ -199,7 +284,7 @@ void test_plist() {
     
     /* initialization */
     DLIST_INIT(head);    
-    A_I(DLIST_IS_EMPTY(head),!=,0);
+    int res = NOT_I(DLIST_IS_EMPTY(head),!=,0);
 
     /* add element at beginning of list */
     elA = NEW(struct elem);
@@ -232,8 +317,8 @@ void test_plist() {
     DLIST_MOVE_BEFORE(head, *inB);
     F()N(1)N(2)N(3)L();
 
-    A_I(DLIST_FIRST(head)->data,==,1);
-    A_I(DLIST_LAST(head)->data,==,3);
+    res |= NOT_I(DLIST_FIRST(head)->data,==,1);
+    res |= NOT_I(DLIST_LAST(head)->data,==,3);
 
     DLIST_LOOP(head, in) {
         P("%d", in->me->data);
@@ -263,10 +348,10 @@ void test_plist() {
     }
     F()L();
 
-    OUT;
+    return R_I(res);
 }
 
-void test_mlist() {
+int test_mlist() {
     IN;
 
     struct elem {
@@ -280,7 +365,7 @@ void test_mlist() {
     
     /* initialization */
     DLIST_INIT(head);
-    A_I(DLIST_IS_EMPTY(head),!=,0);
+    int res = NOT_I(DLIST_IS_EMPTY(head),!=,0);
 
     /* add element at beginning of list */
     elA = NEW(struct elem);
@@ -310,8 +395,8 @@ void test_mlist() {
     DLIST_MOVE_BEFORE(head, elB->list_data);
     F()N(1)N(2)N(3)L();
 
-    A_I(DLIST_FIRST(head)->data,==,1);
-    A_I(DLIST_LAST(head)->data,==,3);
+    res |= NOT_I(DLIST_FIRST(head)->data,==,1);
+    res |= NOT_I(DLIST_LAST(head)->data,==,3);
 
     DLIST_LOOP(head, in) {
         P("%d", in->me->data);
@@ -339,17 +424,13 @@ void test_mlist() {
     }
     F()L();
 
-    OUT;
+    return R_I(res);
 }
+
+DEFINE_TESTS(TESTS)
 
 int main(int argc, char **argv)
 {
-    IN;
-    test_new();
-    test_list();
-    test_ezlist();
-    test_plist();
-    test_mlist();
-    return R_I(0);
+    return TestLib_Run(argc, argv, nullfn, nullfn, NULL);
 }
 

@@ -1,6 +1,7 @@
 INCPATH=.:../src
-LIBPATH=../src
+LIBPATH=../src:.
 SHAREDLIB+=-lmemmgr
+TESTOBJ=testlib.o
 
 SRC=\
 	memmgr_test.c\
@@ -12,17 +13,23 @@ BIN=$(SRC:.c=)
 INCLUDE+=$(patsubst %,-I%,$(subst :, ,$(INCPATH)))
 LIBINCLUDE+=$(patsubst %,-L%,$(subst :, ,$(LIBPATH)))
 
-CFLAGS+=-Wall -fpic -pipe -ansi $(INCLUDE)
+CFLAGS+=-Wall -pipe -ansi $(INCLUDE)
 
 CC=$(CROSS)gcc
-OBJ=$(SRC:.c=.o)
+OBJ=$(SRC:.c=.o) $(TESTOBJ)
 
 all:: $(BIN)
 
 install::
 	cp -f $(BIND) $(BINDIR)
 
-%: %.c
+memmgr_test: memmgr_test.c $(TESTOBJ)
+	$(CC) $(CFLAGS) $(LIBINCLUDE) $(SHAREDLIB) $(TESTOBJ) $< -o $@
+
+utils_test: utils_test.c $(TESTOBJ)
+	$(CC) $(CFLAGS) $(LIBINCLUDE) $(SHAREDLIB) $(TESTOBJ) $< -o $@
+
+tiler_test: tiler_test.c
 	$(CC) $(CFLAGS) $(LIBINCLUDE) $(SHAREDLIB) $< -o $@
 
 clean::
