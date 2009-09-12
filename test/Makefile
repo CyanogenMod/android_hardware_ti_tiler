@@ -1,4 +1,4 @@
-INCPATH=.:../src:$(TILER_DRIVER_INC_PATH)
+INCPATH=.:../src
 LIBPATH=../src
 SHAREDLIB+=-lmemmgr
 

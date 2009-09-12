@@ -49,6 +49,8 @@ SSPtr TilerMgr_Map(void *p, bytes_t l) { return 1; }
 int TilerMgr_PageModeFree(SSPtr p) { return 0; }
 int TilerMgr_Free(SSPtr p) { return 0; }
 int TilerMgr_Unmap(SSPtr p) { return 0; }
+int TilerMgr_Open() { return 0; }
+int TilerMgr_Close() { return 0; }
 #else
 #include "tilermgr.h"
 SSPtr TilerMgr_Map(void *p, bytes_t l) { return 0; }
@@ -248,11 +250,13 @@ static uint32_t buf_cache_query(void *ptr, int buf_type_mask,
     _AllocData *ad;
     pthread_mutex_lock(&che_mutex);
     DLIST_MLOOP(bufs, ad, link) {
-        if(0) DP("got(%p-%p,%d)", ad->bufPtr, ad->bufPtr + ad->size, ad->buf_type);
-        CHK_P(ad->bufPtr,<=,ptr);
-        CHK_P(ptr,<,ad->bufPtr + ad->size);
-        CHK_I(ad->buf_type & buf_type_mask,!=,0);
-        CHK_P(bufPtr,!=,0);
+        if(0) {
+            DP("got(%p-%p,%d)", ad->bufPtr, ad->bufPtr + ad->size, ad->buf_type);
+            CHK_P(ad->bufPtr,<=,ptr);
+            CHK_P(ptr,<,ad->bufPtr + ad->size);
+            CHK_I(ad->buf_type & buf_type_mask,!=,0);
+            CHK_P(bufPtr,!=,0);
+        }
         if ((ad->buf_type & buf_type_mask) &&
             ad->bufPtr <= ptr && ptr < ad->bufPtr + ad->size) {
             if (bufPtr)
@@ -765,6 +769,7 @@ int MemMgr_Free(void *bufPtr)
 
             /* unmap buffer */
             bytes_t size = tiler_size(buf.blocks, buf.num_blocks);
+            bufPtr = (void *)((uint32_t)bufPtr & ~(PAGE_SIZE - 1));
             ERR_ADD(ret, munmap(bufPtr, size));
         }
 #else
@@ -869,6 +874,7 @@ int MemMgr_UnMap(void *bufPtr)
 
             /* unmap buffer */
             bytes_t size = tiler_size(buf.blocks, buf.num_blocks);
+            bufPtr = (void *)((uint32_t)bufPtr & ~(PAGE_SIZE - 1));
             ERR_ADD(ret, munmap(bufPtr, size));
         }
 #else

@@ -1,4 +1,4 @@
-INCPATH=.:$(TILER_DRIVER_INC_PATH)
+INCPATH=.
 LIB=libmemmgr.so
 PUBLIC_HDR=tilermgr.h memmgr.h tilermem.h mem_types.h
 

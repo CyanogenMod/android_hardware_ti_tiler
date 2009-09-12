@@ -33,6 +33,7 @@
 #include "../src/memmgr_common.c"
 
 #define FALSE 0
+#define TESTERR_NOTIMPLEMENTED -65378
 
 #define MAX_ALLOCS 10
 
@@ -170,7 +171,7 @@ void fill_mem(uint16_t start, MemAllocBlock *block)
     width *= def_bpp(block->pixelFormat);
     bytes_t size = height * stride;
 
-    P("(%p,0x%x*0x%x,s=0x%x)", block->ptr, width, height, stride);
+    P("(%p,0x%x*0x%x,s=0x%x)=0x%x", block->ptr, width, height, stride, start);
 
     CHK_I(width,<=,stride);
     uint32_t *ptr32 = (uint32_t *)ptr;
@@ -765,6 +766,7 @@ int map_1D_test(bytes_t length, bytes_t stride)
     length = (length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
     printf("Mapping and UnMapping 0x%xb 1D buffer\n", length);
 
+#if __MAP_OK__
     /* allocate aligned buffer */
     void *buffer = malloc(length + PAGE_SIZE - 1);
     void *dataPtr = (void *)(((uint32_t)buffer + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1));
@@ -773,6 +775,9 @@ int map_1D_test(bytes_t length, bytes_t stride)
     if (!ptr) return 1;
     int res = unmap_1D(dataPtr, length, stride, val, ptr);
     FREE(buffer);
+#else
+    int res = TESTERR_NOTIMPLEMENTED;
+#endif
     return res;
 }
 
@@ -926,6 +931,7 @@ int maxmap_1D_test(bytes_t length, int max_maps)
     length = (length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
     printf("Map & UnMap max # of %xb 1D buffers\n", length);
 
+#ifdef __MAP_OK__
     struct data {
         uint16_t val;
         void    *bufPtr, *buffer, *dataPtr;
@@ -966,6 +972,9 @@ int maxmap_1D_test(bytes_t length, int max_maps)
         ERR_ADD(res, unmap_1D(mem[ix].dataPtr, length, 0, mem[ix].val, mem[ix].bufPtr));
         FREE(mem[ix].buffer);
     }
+#else
+    int res = TESTERR_NOTIMPLEMENTED;
+#endif
     return res;
 }
 
@@ -1030,6 +1039,7 @@ int star_test(uint32_t num_ops, uint16_t num_slots)
             case 4: res = free_2D(mem[ix].width, mem[ix].height, PIXEL_FMT_32BIT, 0, mem[ix].val, mem[ix].bufPtr); break;
             case 5: res = free_NV12(mem[ix].width, mem[ix].height, mem[ix].val, mem[ix].bufPtr); break;
             }
+            P("%s[%p]", mem[ix].op ? "free" : "unmap", mem[ix].bufPtr);
             ZERO(mem[ix]);
         }
         /* we need to allocate/map data */
@@ -1038,13 +1048,13 @@ int star_test(uint32_t num_ops, uint16_t num_slots)
             int op = rand();
             /* set width */
             pixels_t width, height;          
-            switch (op & 15) {
-            case 0:                         width = 1920; height = 1080; break;
-            case 1: case 2:                  width = 1280; height = 720; break;
-            case 3: case 4:                   width = 640; height = 480; break;
-            case 5: case 6: case 7:           width = 848; height = 480; break;
-            case 8: case 9: case 10: case 11: width = 176; height = 144; break;
-            default:                                width = height = 64; break;
+            switch ("AAAABBBBCCCDDEEF"[op & 15]) {
+            case 'F': width = 1920; height = 1080; break;
+            case 'E': width = 1280; height = 720; break;
+            case 'D': width = 640; height = 480; break;
+            case 'C': width = 848; height = 480; break;
+            case 'B': width = 176; height = 144; break;
+            case 'A': width = height = 64; break;
             }
             mem[ix].length = (bytes_t)width * height;
             mem[ix].width = width;
@@ -1052,11 +1062,11 @@ int star_test(uint32_t num_ops, uint16_t num_slots)
             mem[ix].val = ((uint16_t)rand());
 
             /* perform operation */
-            switch ((op >> 4) & 15)
+            mem[ix].op = "AAABBBBCCCCDDDDE"[(op >> 4) & 15] - 'A';
+            switch (mem[ix].op)
             {
-            case 0: case 1: case 2: case 3: /* map 1D buffer */
-#if 0
-                mem[ix].op = 0;
+            case 0: /* map 1D buffer */
+#ifdef __MAP_OK__
                 /* allocate aligned buffer */
                 mem[ix].length = (mem[ix].length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
                 mem[ix].buffer = malloc(mem[ix].length + PAGE_SIZE - 1);
@@ -1066,30 +1076,77 @@ int star_test(uint32_t num_ops, uint16_t num_slots)
                     mem[ix].bufPtr = map_1D(mem[ix].dataPtr, mem[ix].length, 0, mem[ix].val);
                     if (!mem[ix].bufPtr) FREE(mem[ix].buffer);
                 }                
+                P("map[l=0x%x] = %p", mem[ix].length, mem[ix].bufPtr);
                 break;
-#endif
-            case 4: case 5: case 6:
-#if 0
+#else
                 mem[ix].op = 1;
-                mem[ix].bufPtr = alloc_1D(mem[ix].length, 0, mem[ix].val);
-                break;
 #endif
-            case 7: case 8:
-                mem[ix].op = 2;
+            case 1:
+                mem[ix].bufPtr = alloc_1D(mem[ix].length, 0, mem[ix].val);
+                P("alloc[l=0x%x] = %p", mem[ix].length, mem[ix].bufPtr);
+                break;
+            case 2:
                 mem[ix].bufPtr = alloc_2D(mem[ix].width, mem[ix].height, PIXEL_FMT_8BIT, 0, mem[ix].val);
+                P("alloc[%d*%d*8] = %p", mem[ix].width, mem[ix].height, mem[ix].bufPtr);
                 break;
-            case 9: case 10:
-                mem[ix].op = 3;
+            case 3:
                 mem[ix].bufPtr = alloc_2D(mem[ix].width, mem[ix].height, PIXEL_FMT_16BIT, 0, mem[ix].val);
+                P("alloc[%d*%d*16] = %p", mem[ix].width, mem[ix].height, mem[ix].bufPtr);
                 break;
-            case 11:
-                mem[ix].op = 4;
+            case 4:
                 mem[ix].bufPtr = alloc_2D(mem[ix].width, mem[ix].height, PIXEL_FMT_32BIT, 0, mem[ix].val);
+                P("alloc[%d*%d*32] = %p", mem[ix].width, mem[ix].height, mem[ix].bufPtr);
                 break;
-            case 12: case 13: case 14: case 15:
-                mem[ix].op = 5;
+            case 5:
                 mem[ix].bufPtr = alloc_NV12(mem[ix].width, mem[ix].height, mem[ix].val);
+                P("alloc[%d*%d*NV12] = %p", mem[ix].width, mem[ix].height, mem[ix].bufPtr);
                 break;               
+            }
+
+            /* check all previous buffers */
+            for (ix = 0; ix < num_slots; ix++)
+            {
+                MemAllocBlock blk;
+                if (mem[ix].bufPtr)
+                {
+                    if(0) P("ptr=%p, op=%d, w=%d, h=%d, l=%x, val=%x",
+                      mem[ix].bufPtr, mem[ix].op, mem[ix].width, mem[ix].height,
+                      mem[ix].length, mem[ix].val);
+                    switch (mem[ix].op)
+                    {
+                    case 0: case 1:
+                        blk.pixelFormat = PIXEL_FMT_PAGE;
+                        blk.dim.len = mem[ix].length;
+                        break;
+                    case 5:
+                        blk.pixelFormat = PIXEL_FMT_16BIT;
+                        blk.dim.area.width = mem[ix].width >> 1;
+                        blk.dim.area.height = mem[ix].height >> 1;
+                        blk.stride = def_stride(mem[ix].width);  /* same for Y and UV */
+                        blk.ptr = mem[ix].bufPtr + mem[ix].height * blk.stride;
+                        check_mem(mem[ix].val, &blk);
+                    case 2:
+                        blk.pixelFormat = PIXEL_FMT_8BIT;
+                        blk.dim.area.width = mem[ix].width;
+                        blk.dim.area.height = mem[ix].height;
+                        blk.stride = def_stride(mem[ix].width);
+                        break;
+                    case 3:
+                        blk.pixelFormat = PIXEL_FMT_16BIT;
+                        blk.dim.area.width = mem[ix].width;
+                        blk.dim.area.height = mem[ix].height;
+                        blk.stride = def_stride(mem[ix].width * 2);
+                        break;
+                    case 4:
+                        blk.pixelFormat = PIXEL_FMT_32BIT;
+                        blk.dim.area.width = mem[ix].width;
+                        blk.dim.area.height = mem[ix].height;
+                        blk.stride = def_stride(mem[ix].width * 4);
+                        break;
+                    }
+                    blk.ptr = mem[ix].bufPtr;
+                    check_mem(mem[ix].val, &blk);
+                }
             }
         }
     }
@@ -1197,22 +1254,24 @@ int star_tiler_test(uint32_t num_ops, uint16_t num_slots)
             bytes_t length = (bytes_t)width * height;
 
             /* perform operation */
-            mem[ix].op = "BBBBBBBCCCCDDDDE"[(op >> 4) & 15] - 'A';
+            mem[ix].op = "AAABBBBCCCCDDDDE"[(op >> 4) & 15] - 'A';
             switch (mem[ix].op)
             {
             case 0: /* map 1D buffer */
-#if 0
-                mem[ix].op = 0;
+#ifdef __MAP_OK__
                 /* allocate aligned buffer */
-                mem[ix].length = (mem[ix].length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
-                mem[ix].buffer = malloc(mem[ix].length + PAGE_SIZE - 1);
+                length = (length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
+                mem[ix].buffer = malloc(length + PAGE_SIZE - 1);
                 if (mem[ix].buffer)
                 {
                     mem[ix].dataPtr = (void *)(((uint32_t)mem[ix].buffer + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1));
-                    mem[ix].bufPtr = map_1D(mem[ix].dataPtr, mem[ix].length, 0, mem[ix].val);
-                    if (!mem[ix].bufPtr) FREE(mem[ix].buffer);
+                    mem[ix].ssptr = TilerMgr_Map(mem[ix].dataPtr, length);
+                    if (!mem[ix].ssptr) FREE(mem[ix].buffer);
                 }                
+                P("map[l=0x%x] = 0x%x", length, mem[ix].ssptr);
                 break;
+#else
+                mem[ix].op = 1;
 #endif
             case 1:
                 mem[ix].ssptr = TilerMgr_PageModeAlloc(length);
@@ -1313,6 +1372,12 @@ int neg_alloc_tests()
         /* good 2D block */
         blk->dim.area.height = 16;
     }
+
+    block[0].pixelFormat = block[1].pixelFormat = PIXEL_FMT_8BIT;
+    block[0].dim.area.width = 16384;
+    block[0].dim.area.height = block[1].dim.area.width = 16;
+    block[1].dim.area.height = 8192;
+    ret |= NEGA(MemMgr_Alloc(block, 2));
 
     return ret;
 }
@@ -1530,14 +1595,23 @@ int neg_check_tests()
  * 
  * @param res    Test result
  * 
- * @return 0 on success, 1 on failure
+ * @return 0 on success, 1 on failure, TESTERR_NOTIMPLEMENTED if 
+ *         test is not available
  */
 int result(int res)
 {
     if (res)
     {
-        printf("==> TEST FAIL(%d)\n", res);
-        return 1;
+        if (res == TESTERR_NOTIMPLEMENTED)
+        {
+            printf("==> TEST NOT AVAILABLE\n", res);
+            return res;
+        }
+        else
+        {
+            printf("==> TEST FAIL(%d)\n", res);
+            return 1;
+        }
     }
     else
     {
@@ -1580,7 +1654,7 @@ int test(int id)
  */
 int main(int argc, char **argv)
 {
-    int start = 1, end = -1, res, failed = 0, succeeded = 0;
+    int start = 1, end = -1, res, failed = 0, succeeded = 0, unavailable = 0;
     char c;
 
     /* all tests */
@@ -1633,10 +1707,13 @@ int main(int argc, char **argv)
     do
     {
         res = test(start++);
-        if (res == 1) failed++; else if (!res) succeeded++;
+        if (res == 1) failed++;
+        else if (!res) succeeded++;
+        else if (res == TESTERR_NOTIMPLEMENTED) unavailable++;
     } while (res != -1 && (end < 0 || start <= end));
 
-    printf("FAILED: %d, SUCCEEDED: %d\n", failed, succeeded);
+    printf("FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
+           unavailable);
 
     /* also execute internal unit tests - this also verifies that we did not
        keep any references */
