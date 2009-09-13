@@ -26,7 +26,7 @@
 
 /** Returns TRUE iff str is a whole unsigned int */
 #define is_uint(str) \
-    E_ { unsigned i; char c; sscanf(argv[2], "%u%c", &i, &c) == 1; } _E
+    E_ { unsigned i; char c; sscanf(str, "%u%c", &i, &c) == 1; } _E
 
 extern int __internal__TestLib_DoList(int id);
 
@@ -85,12 +85,14 @@ int TestLib_Run(int argc, char **argv, void(*init_fn)(void *),
     /* open range .. b */
     else if (argc == 3 && !strcmp(argv[1], "..") && is_uint(argv[2]))
     {
+        start = 1;
         end = atoi(argv[2]);
     }
     /* open range a .. */
     else if (argc == 3 && !strcmp(argv[2], "..") && is_uint(argv[1]))
     {
         start = atoi(argv[1]);
+        end = -1;
     }
     else if (argc == 4 && !strcmp(argv[2], "..") && is_uint(argv[1]) && is_uint(argv[3]))
     {
@@ -118,6 +120,8 @@ int TestLib_Run(int argc, char **argv, void(*init_fn)(void *),
         if (res == TESTLIB_FAIL) failed++;
         else if (res == TESTLIB_OK) succeeded++;
         else if (res == TESTLIB_UNAVAILABLE) unavailable++;
+        printf("so far FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
+           unavailable);
     } while (res != TESTLIB_INVALID && (end < 0 || start <= end));
 
     printf("FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,

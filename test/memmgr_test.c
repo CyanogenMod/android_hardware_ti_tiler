@@ -81,6 +81,21 @@
     T(neg_map_tests())\
     T(neg_unmap_tests())\
     T(neg_check_tests())\
+    T(maxalloc_2D_test(2500, 32, PIXEL_FMT_8BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(2500, 16, PIXEL_FMT_16BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(1250, 16, PIXEL_FMT_32BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(5000, 32, PIXEL_FMT_8BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(5000, 16, PIXEL_FMT_16BIT, MAX_ALLOCS))\
+    T(maxalloc_2D_test(2500, 16, PIXEL_FMT_32BIT, MAX_ALLOCS))\
+    T(alloc_2D_test(8193, 16, PIXEL_FMT_8BIT))\
+    T(alloc_2D_test(8193, 16, PIXEL_FMT_16BIT))\
+    T(alloc_2D_test(4097, 16, PIXEL_FMT_32BIT))\
+    T(alloc_2D_test(16384, 16, PIXEL_FMT_8BIT))\
+    T(alloc_2D_test(16384, 16, PIXEL_FMT_16BIT))\
+    T(alloc_2D_test(8192, 16, PIXEL_FMT_32BIT))\
+    T(!alloc_2D_test(16385, 16, PIXEL_FMT_8BIT))\
+    T(!alloc_2D_test(16385, 16, PIXEL_FMT_16BIT))\
+    T(!alloc_2D_test(8193, 16, PIXEL_FMT_32BIT))\
     T(maxalloc_1D_test(4096, MAX_ALLOCS))\
     T(maxalloc_2D_test(64, 64, PIXEL_FMT_8BIT, MAX_ALLOCS))\
     T(maxalloc_2D_test(64, 64, PIXEL_FMT_16BIT, MAX_ALLOCS))\
@@ -122,15 +137,6 @@
     T(star_tiler_test(1000, 30))\
     T(star_test(100, 10))\
     T(star_test(1000, 10))\
-    T(alloc_2D_test(8193, 16, PIXEL_FMT_8BIT))\
-    T(alloc_2D_test(8193, 16, PIXEL_FMT_16BIT))\
-    T(alloc_2D_test(4097, 16, PIXEL_FMT_32BIT))\
-    T(alloc_2D_test(16384, 16, PIXEL_FMT_8BIT))\
-    T(alloc_2D_test(16384, 16, PIXEL_FMT_16BIT))\
-    T(alloc_2D_test(8192, 16, PIXEL_FMT_32BIT))\
-    T(!alloc_2D_test(16385, 16, PIXEL_FMT_8BIT))\
-    T(!alloc_2D_test(16385, 16, PIXEL_FMT_16BIT))\
-    T(!alloc_2D_test(8193, 16, PIXEL_FMT_32BIT))\
 
 /* this is defined in memmgr.c, but not exported as it is for internal 
    use only */
