@@ -102,7 +102,7 @@ static void init()
  * 
  * @return 0 on success, non-0 error value on failure.
  */
-int inc_ref()
+static int inc_ref()
 {
     /* initialize tiler on first call */
     pthread_mutex_lock(&ref_mutex);
@@ -138,7 +138,7 @@ int inc_ref()
  * 
  * @return 0 on success, non-0 error value on failure.
  */
-int dec_ref()
+static int dec_ref()
 {
     pthread_mutex_lock(&ref_mutex);
 
@@ -363,7 +363,7 @@ static void dump_buf(struct tiler_buf_info* buf, char* prefix)
  * 
  * @return The tiler format
  */
-enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
+static enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
 {
 #ifndef __STUB_TILER__
     return (ssptr == 0              ? TILFMT_INVALID :
