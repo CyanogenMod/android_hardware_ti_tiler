@@ -30,10 +30,12 @@
 
 #include "mem_types.h"
 #include "utils.h"
+#include "debug_utils.h"
+#include "list_utils.h"
 #include "tilermem_utils.h"
 #include "phase1_d2c_remap.h"
-
-#include "memmgr_common.c"
+#include "memmgr.h"
+#include "tiler.h"
 
 struct _ReMapData {
     void     *bufPtr;
@@ -46,6 +48,35 @@ struct _ReMapData {
 struct _ReMapList bufs;
 static int bufs_inited = 0;
 static pthread_mutex_t che_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/**
+ * Returns the bytes per pixel for the pixel format.
+ * 
+ * @author a0194118 (9/4/2009)
+ * 
+ * @param pixelFormat   Pixelformat
+ * 
+ * @return Bytes per pixel
+ */
+static bytes_t def_bpp(pixel_fmt_t pixelFormat)
+{
+    return (pixelFormat == PIXEL_FMT_32BIT ? 4 :
+            pixelFormat == PIXEL_FMT_16BIT ? 2 : 1);
+}
+
+/**
+ * Returns the default page stride for this block
+ * 
+ * @author a0194118 (9/4/2009)
+ * 
+ * @param width  Width of 2D container
+ * 
+ * @return Stride
+ */
+static bytes_t def_stride(pixels_t width)
+{
+    return (PAGE_SIZE - 1 + (bytes_t)width) & ~(PAGE_SIZE - 1);
+}
 
 static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
 {
@@ -77,6 +108,7 @@ static void dump_buf(struct tiler_buf_info* buf, char* prefix)
         dump_block(buf->blocks + ix, "", ix + 1 == buf->num_blocks ? "}" : "");
     }
 }
+
 
 /**
  * Initializes the static structures
@@ -156,20 +188,6 @@ static bytes_t def_size(struct tiler_block_info *blk)
             blk->dim.area.height * def_stride(blk->dim.area.width * def_bpp(blk->fmt)));
 }
 
-/**
- * During Phase 1, tiler info is needed to remap tiler blocks 
- * from Ducati to Chiron.  However, this is no longer needed in 
- * phase 2, as the virtual stride will be the same on Ducati and 
- * Chiron.  This API is provided here temporarily for phase 1.
- * 
- * @author a0194118 (9/9/2009)
- * 
- * @param num_blocks 
- * @param dsptrs 
- * @param lengths 
- * 
- * @return void* 
- */
 void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
                                      bytes_t lengths[])
 {
@@ -195,7 +213,7 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
     for (ix = 0; ix < num_blocks; ix++)
     {
         /* convert DSPtrs to SSPtrs using SysLink */       
-        SSPtr ssptr = buf.blocks[ix].ssptr = SysLink_DucatiToPhys(dsptrs[ix]);
+        SSPtr ssptr = buf.blocks[ix].ssptr = /* SysLink_DucatiToPhys */ (dsptrs[ix]);
         if (NOT_P(buf.blocks[ix].ssptr,!=,0)) {
             P("for dsptrs[%d]=0x%x", ix, dsptrs[ix]);
             goto FAIL;
@@ -204,7 +222,7 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
         /* query tiler driver for details on these blocks, such as
            width/height/len/fmt */
         dump_block(buf.blocks + ix, "=(qb)=>", "");
-        res = ioctl(td, TILIOC_QBLOCK, buf.blocks + ix);
+        res = ioctl(td, TILIOC_QUERY_BLK, buf.blocks + ix);
         dump_block(buf.blocks + ix, "<=(qb)=", "");
 
         if (NOT_I(res,==,0) || NOT_I(buf.blocks[ix].ssptr,!=,0))
@@ -212,6 +230,41 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
             P("tiler did not allocate dsptr[%d]=0x%x ssptr=0x%x", ix, dsptrs[ix], ssptr);
             goto FAIL;
         }
+
+        /* :TODO: for now we fix width to have 4K stride, and get length and
+           height from the passed-in length parameters.  This is because
+           tiler driver does not store any of this information. */
+        if (buf.blocks[ix].fmt == TILFMT_PAGE)
+        {
+            buf.blocks[ix].dim.len = lengths[ix];
+        }
+        else
+        {
+            /* get number of horizontal pages in the 2d area from the length,
+               then get the height of the buffer.  The width of the buffer will
+               always be the stride, as it is not tracked by tiler. */
+            bytes_t max_alloc_size = (bytes_t)buf.blocks[ix].dim.area.height * PAGE_SIZE;
+            bytes_t min_alloc_size = max_alloc_size - (buf.blocks[ix].fmt == TILFMT_8BIT ? 63 : 31) * PAGE_SIZE;
+            int min_page_width = (lengths[ix] + max_alloc_size - 1) / max_alloc_size;
+            int max_page_width = (lengths[ix] + min_alloc_size - 1) / min_alloc_size;
+            if (max_page_width > buf.blocks[ix].dim.area.width / PAGE_SIZE)
+            {
+                P("lowering max_page_width from %d to %d",
+                  max_page_width, buf.blocks[ix].dim.area.width / PAGE_SIZE);
+                max_page_width = buf.blocks[ix].dim.area.width / PAGE_SIZE;
+            }
+            CHK_I(min_page_width,<=,max_page_width);
+
+            /* it is possible that there are more solutions?  Give warning */
+            if (min_page_width != max_page_width)
+            {
+                P("WARNING: cannot resolve stride (%d-%d). Choosing the smaller.");
+            }
+            buf.blocks[ix].dim.area.height = lengths[ix] / PAGE_SIZE / pages;
+            buf.blocks[ix].dim.area.width = PAGE_SIZE * min_page_width / def_bpp(buf.blocks[ix].fmt);
+            buf.blocks[ix].stride = buf.blocks[ix].dim.area.width;
+        }
+        CHK_I(def_size(buf.blocks + ix),==,lengths[ix]);
 
         /* add up size of buffer after remap */
         size += def_size(buf.blocks + ix);
@@ -226,6 +279,11 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
     /* map blocks to process space */
     bufPtr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED,
                         td, buf.offset);
+    if (bufPtr == MAP_FAILED){
+        bufPtr = NULL;
+    } else {
+        bufPtr += buf.blocks[0].ssptr & (PAGE_SIZE - 1);
+    }
     DP("ptr=%p", bufPtr);
 
     /* if failed to map: unregister buffer */
@@ -254,7 +312,6 @@ FAIL:
     return R_P(bufPtr);
 }
 
-
 int tiler_assisted_phase1_DeMap(void *bufPtr)
 {
     IN;
@@ -262,7 +319,7 @@ int tiler_assisted_phase1_DeMap(void *bufPtr)
     int ret = REMAP_ERR_GENERIC, ix;
     struct tiler_buf_info buf;
     ZERO(buf);
-
+ 
     /* need tiler driver */
     int td = open("/dev/tiler", O_RDWR | O_SYNC);
     if (NOT_I(td,>=,0)) return R_I(ret);
@@ -292,6 +349,7 @@ int tiler_assisted_phase1_DeMap(void *bufPtr)
             {
                 size += def_size(buf.blocks + ix);
             }
+            bufPtr = (void *)ROUND_DOWN_TO2POW((uint32_t)bufPtr, PAGE_SIZE);
             ERR_ADD(ret, munmap(bufPtr, size));
         }
     }

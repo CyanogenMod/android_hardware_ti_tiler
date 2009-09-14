@@ -29,7 +29,7 @@
  * This method remaps a list of tiler blocks (specified by the 
  * Ducati virtual address and the block size) in a consecutive 
  * fashion into one virtual buffer on Chiron. 
- * 
+ *  
  * @author a0194118 (9/9/2009)
  * 
  * @param num_blocks   Number of blocks to remap
@@ -38,7 +38,12 @@
  *                     beginning of a tiler allocated 1D or 2D
  *                     block.
  * @param lengths      Array of block lenghts (one for each 
- *                     block)
+ *                     block).  This is the desired length of
+ *                     the blocks on the Chiron.  These are used
+ *                     to infer the height of 2D buffers, and
+ *                     the length of 1D buffers, as the tiler
+ *                     driver does not keep track of exact
+ *                     block sizes, only allocated block sizes.
  * 
  * @return Pointer to the remapped combined buffer.  NULL on 
  *         failure.
