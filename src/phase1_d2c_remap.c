@@ -258,9 +258,10 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
             /* it is possible that there are more solutions?  Give warning */
             if (min_page_width != max_page_width)
             {
-                P("WARNING: cannot resolve stride (%d-%d). Choosing the smaller.");
+                P("WARNING: cannot resolve stride (%d-%d). Choosing the smaller.",
+                  min_page_width, max_page_width);
             }
-            buf.blocks[ix].dim.area.height = lengths[ix] / PAGE_SIZE / pages;
+            buf.blocks[ix].dim.area.height = lengths[ix] / PAGE_SIZE / min_page_width;
             buf.blocks[ix].dim.area.width = PAGE_SIZE * min_page_width / def_bpp(buf.blocks[ix].fmt);
             buf.blocks[ix].stride = buf.blocks[ix].dim.area.width;
         }
