@@ -17,7 +17,8 @@
     T(test_ezlist())\
     T(test_dzlist())\
     T(test_plist())\
-    T(test_mlist())
+    T(test_mlist())\
+    T(test_math())
 
 #define F() in = head.next;
 #define N(a) res |= NOT_P(in,!=,&head); \
@@ -424,6 +425,23 @@ int test_mlist() {
     }
     F()L();
 
+    return R_I(res);
+}
+
+int test_math()
+{
+    IN;
+    int res = 0;
+    res |= NOT_I(ROUND_UP_TO2POW(0, 4096),==,0);
+    res |= NOT_I(ROUND_UP_TO2POW(1, 4096),==,4096);
+    res |= NOT_I(ROUND_UP_TO2POW(4095, 4096),==,4096);
+    res |= NOT_I(ROUND_UP_TO2POW(4096, 4096),==,4096);
+    res |= NOT_I(ROUND_UP_TO2POW(4097, 4096),==,8192);
+    res |= NOT_I(ROUND_DOWN_TO2POW(0, 4096),==,0);
+    res |= NOT_I(ROUND_DOWN_TO2POW(1, 4096),==,0);
+    res |= NOT_I(ROUND_DOWN_TO2POW(4095, 4096),==,0);
+    res |= NOT_I(ROUND_DOWN_TO2POW(4096, 4096),==,4096);
+    res |= NOT_I(ROUND_DOWN_TO2POW(4097, 4096),==,4096);
     return R_I(res);
 }
 
