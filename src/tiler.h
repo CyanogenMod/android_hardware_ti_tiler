@@ -77,5 +77,6 @@ struct tiler_buf_info {
 #define TILIOC_QBUF  _IOWR('z', 106, unsigned long)
 #define TILIOC_RBUF  _IOWR('z', 109, unsigned long)
 #define TILIOC_URBUF _IOWR('z', 110, unsigned long)
+#define TILIOC_QUERY_BLK _IOWR('z', 111, unsigned long)
 
 #endif
