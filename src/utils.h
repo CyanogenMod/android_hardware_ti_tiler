@@ -38,5 +38,13 @@
 /* clear variable */
 #define ZERO(var)    memset(&(var), 0, sizeof(var))
 
+/* binary round methods */
+#define ROUND_DOWN_TO2POW(x, N) ((x) & ~((N)-1))
+#define ROUND_UP_TO2POW(x, N) ROUND_DOWN_TO2POW((x) + (N) - 1, N)
+
+/* regulare round methods */
+#define ROUND_DOWN_TO(x, N) ((x) / (N) * (N))
+#define ROUND_UP_TO(x, N) ROUND_DOWN_TO((x) + (N) - 1, N)
+
 #endif
 
