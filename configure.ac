@@ -5,6 +5,7 @@ AC_PREREQ(2.61)
 AC_INIT(memmgr, 1.00, http://www.ti.com)
 AC_CONFIG_SRCDIR([src/memmgr.c])
 AC_CONFIG_HEADER([config.h])
+AC_CANONICAL_SYSTEM
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([memmgr], [1.00])
 LT_INIT
@@ -26,9 +27,20 @@ AC_TYPE_UINT32_T
 
 # Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
-AC_FUNC_MALLOC
-AC_FUNC_MMAP
+#AC_FUNC_MALLOC
+#AC_FUNC_MMAP
 AC_CHECK_FUNCS([munmap strerror])
+
+AC_CHECK_PROG([HAVE_PKGCONFIG], [pkg-config], [yes], [no])
+
+PKG_CHECK_MODULES([SYSLINK], [libprocmgr], [
+  echo "SYSLINK found"
+], [
+  echo "SYSLINK not found. Stub enabled."
+  AC_DEFINE([STUB_SYSLINK],[1])
+])
+
+AC_SUBST(STUB_SYSLINK)
 
 AC_ARG_ENABLE(tilermgr,
 [  --enable-tilermgr    Include TilerMgr headers],
@@ -49,6 +61,13 @@ esac],[tilermgr=false])
 AM_CONDITIONAL(UNIT_TESTS, test x$unit_tests = xtrue)
 
 AM_CONDITIONAL(TILERMGR, test x$tilermgr = xtrue)
+
+if test "$target" != "arm-none-linux-gnueabi"
+then
+  echo "Stubbing tiler and syslink on none-arm system."
+  AC_DEFINE([STUB_TILER],[1],[Use tiler stub])
+  AC_DEFINE([STUB_SYSLINK],[1],[Use syslink stub])
+fi
 
 AC_CONFIG_FILES([Makefile src/Makefile test/Makefile])
 AC_OUTPUT
