@@ -28,6 +28,9 @@
 #define __DEBUG__
 #define __DEBUG_ASSERT__
 
+#ifdef HAVE_CONFIG_H
+    #include "config.h"
+#endif
 #include "mem_types.h"
 #include "utils.h"
 #include "debug_utils.h"
@@ -37,6 +40,18 @@
 #include "memmgr.h"
 #include "tiler.h"
 
+#ifdef STUB_SYSLINK
+static int SysLinkMemUtils_virtToPhys(uint32_t remoteAddr, uint32_t *physAddr,
+                                      int procId)
+{
+    *physAddr = remoteAddr;
+    return 0;
+}
+#define PROC_APPM3 3
+#else
+#include <SysLinkMemUtils.h>
+#endif
+
 struct _ReMapData {
     void     *bufPtr;
     uint32_t  tiler_id;
@@ -45,7 +60,7 @@ struct _ReMapData {
         struct _ReMapData *me;
     } link;
 };
-struct _ReMapList bufs;
+static struct _ReMapList bufs;
 static int bufs_inited = 0;
 static pthread_mutex_t che_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -192,7 +207,9 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
                                      bytes_t lengths[])
 {
     IN;
+    void *bufPtr = NULL;
 
+#ifndef STUB_TILER
     /* we can only remap up to the TILER supported number of blocks */
     if (NOT_I(num_blocks,>,0) || NOT_I(num_blocks,<=,TILER_MAX_NUM_BLOCKS))
         return R_P(NULL);
@@ -207,13 +224,16 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
     int td = open("/dev/tiler", O_RDWR | O_SYNC);
     if (NOT_I(td,>=,0)) return R_P(NULL);
 
-    void *bufPtr = NULL;
-
     /* for each block */
     for (ix = 0; ix < num_blocks; ix++)
     {
-        /* convert DSPtrs to SSPtrs using SysLink */       
-        SSPtr ssptr = buf.blocks[ix].ssptr = /* SysLink_DucatiToPhys */ (dsptrs[ix]);
+        /* check the length of each block */
+        if (NOT_I(lengths[ix] & (PAGE_SIZE - 1),==,0)) goto FAIL;
+
+        /* convert DSPtrs to SSPtrs using SysLink */
+        SysLinkMemUtils_virtToPhys(dsptrs[ix], (uint32_t *)&(buf.blocks[ix].ssptr), PROC_APPM3);
+        if(0) dump_block(buf.blocks + ix, "<=v2s==", "");
+        SSPtr ssptr = buf.blocks[ix].ssptr;
         if (NOT_P(buf.blocks[ix].ssptr,!=,0)) {
             P("for dsptrs[%d]=0x%x", ix, dsptrs[ix]);
             goto FAIL;
@@ -221,9 +241,9 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
 
         /* query tiler driver for details on these blocks, such as
            width/height/len/fmt */
-        dump_block(buf.blocks + ix, "=(qb)=>", "");
+        if(0) dump_block(buf.blocks + ix, "=(qb)=>", "");
         res = ioctl(td, TILIOC_QUERY_BLK, buf.blocks + ix);
-        dump_block(buf.blocks + ix, "<=(qb)=", "");
+        if(0) dump_block(buf.blocks + ix, "<=(qb)=", "");
 
         if (NOT_I(res,==,0) || NOT_I(buf.blocks[ix].ssptr,!=,0))
         {
@@ -246,24 +266,24 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
             bytes_t max_alloc_size = (bytes_t)buf.blocks[ix].dim.area.height * PAGE_SIZE;
             bytes_t min_alloc_size = max_alloc_size - (buf.blocks[ix].fmt == TILFMT_8BIT ? 63 : 31) * PAGE_SIZE;
             int min_page_width = (lengths[ix] + max_alloc_size - 1) / max_alloc_size;
-            int max_page_width = (lengths[ix] + min_alloc_size - 1) / min_alloc_size;
-            if (max_page_width > buf.blocks[ix].dim.area.width / PAGE_SIZE)
+            int max_page_width = lengths[ix] / min_alloc_size;
+            if (max_page_width > buf.blocks[ix].stride / PAGE_SIZE)
             {
-                P("lowering max_page_width from %d to %d",
-                  max_page_width, buf.blocks[ix].dim.area.width / PAGE_SIZE);
-                max_page_width = buf.blocks[ix].dim.area.width / PAGE_SIZE;
+                if(0) P("lowering max_page_width from %d to %d",
+                  max_page_width, buf.blocks[ix].stride / PAGE_SIZE);
+                max_page_width = buf.blocks[ix].stride / PAGE_SIZE;
             }
             CHK_I(min_page_width,<=,max_page_width);
 
             /* it is possible that there are more solutions?  Give warning */
             if (min_page_width != max_page_width)
             {
-                P("WARNING: cannot resolve stride (%d-%d). Choosing the smaller.",
-                  min_page_width, max_page_width);
+                DP("WARNING: cannot resolve stride (%d-%d). Choosing the smaller.",
+                   min_page_width * PAGE_SIZE, max_page_width * PAGE_SIZE);
             }
             buf.blocks[ix].dim.area.height = lengths[ix] / PAGE_SIZE / min_page_width;
-            buf.blocks[ix].dim.area.width = PAGE_SIZE * min_page_width / def_bpp(buf.blocks[ix].fmt);
-            buf.blocks[ix].stride = buf.blocks[ix].dim.area.width;
+            buf.blocks[ix].stride = PAGE_SIZE * min_page_width;
+            buf.blocks[ix].dim.area.width = buf.blocks[ix].stride / def_bpp(buf.blocks[ix].fmt);
         }
         CHK_I(def_size(buf.blocks + ix),==,lengths[ix]);
 
@@ -272,9 +292,9 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
     }
 
     /* register this buffer and/or query last registration */
-    dump_buf(&buf, "==(RBUF)=>");
+    if(0) dump_buf(&buf, "==(RBUF)=>");
     res = ioctl(td, TILIOC_RBUF, &buf);
-    dump_buf(&buf, "<=(RBUF)==");
+    if(0) dump_buf(&buf, "<=(RBUF)==");
     if (NOT_I(res,==,0) || NOT_P(buf.offset,!=,0)) goto FAIL;
 
     /* map blocks to process space */
@@ -285,7 +305,7 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
     } else {
         bufPtr += buf.blocks[0].ssptr & (PAGE_SIZE - 1);
     }
-    DP("ptr=%p", bufPtr);
+    if(0) DP("ptr=%p", bufPtr);
 
     /* if failed to map: unregister buffer */
     if (NOT_P(bufPtr,!=,NULL))
@@ -309,7 +329,7 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
 
 FAIL:
     close(td);
-
+#endif
     return R_P(bufPtr);
 }
 
@@ -317,12 +337,12 @@ int tiler_assisted_phase1_DeMap(void *bufPtr)
 {
     IN;
 
-    int ret = REMAP_ERR_GENERIC, ix;
+    int ret = REMAP_ERR_GENERIC;
+#ifndef STUB_TILER
     struct tiler_buf_info buf;
     ZERO(buf);
- 
     /* need tiler driver */
-    int td = open("/dev/tiler", O_RDWR | O_SYNC);
+    int ix, td = open("/dev/tiler", O_RDWR | O_SYNC);
     if (NOT_I(td,>=,0)) return R_I(ret);
 
     /* retrieve registered buffers from vsptr */
@@ -332,17 +352,17 @@ int tiler_assisted_phase1_DeMap(void *bufPtr)
     if (A_L(buf.offset,!=,0))
     {
         /* get block information for the buffer */
-        dump_buf(&buf, "==(QBUF)=>");
+        if(0) dump_buf(&buf, "==(QBUF)=>");
         ret = A_I(ioctl(td, TILIOC_QBUF, &buf),==,0);
-        dump_buf(&buf, "<=(QBUF)==");
+        if(0) dump_buf(&buf, "<=(QBUF)==");
 
         /* unregister buffer, and free tiler chunks even if there is an
            error */
         if (!ret)
         {
-            dump_buf(&buf, "==(URBUF)=>");
+            if(0) dump_buf(&buf, "==(URBUF)=>");
             ret = A_I(ioctl(td, TILIOC_URBUF, &buf),==,0);
-            dump_buf(&buf, "<=(URBUF)==");
+            if(0) dump_buf(&buf, "<=(URBUF)==");
     
             /* unmap buffer */
             bytes_t size = 0;
@@ -356,8 +376,7 @@ int tiler_assisted_phase1_DeMap(void *bufPtr)
     }
 
     close(td);
-
+#endif
     return R_I(ret);
 }
-
 

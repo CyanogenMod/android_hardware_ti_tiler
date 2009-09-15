@@ -26,6 +26,9 @@
 #include <string.h>
 #include <stdint.h>
 
+#ifdef HAVE_CONFIG_H
+    #include "config.h"
+#endif
 #include <utils.h>
 #include <list_utils.h>
 #include <debug_utils.h>
