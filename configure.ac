@@ -37,7 +37,7 @@ PKG_CHECK_MODULES([SYSLINK], [libprocmgr], [
   echo "SYSLINK found"
 ], [
   echo "SYSLINK not found. Stub enabled."
-  AC_DEFINE([STUB_SYSLINK],[1])
+  # AC_DEFINE([STUB_SYSLINK],[1])
 ])
 
 AC_SUBST(STUB_SYSLINK)

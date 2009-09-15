@@ -18,4 +18,5 @@ tiler_test_SOURCES = tiler_test.c
 tiler_test_LDADD = ../src/libmemmgr.la
 
 d2c_test_SOURCES = d2c_test.c testlib.c
-d2c_test_LDADD = ../src/libmemmgr.la
+d2c_test_LDADD = ../src/libmemmgr.la ../src/libd2cmap.la
+

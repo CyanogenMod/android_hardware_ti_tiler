@@ -25,5 +25,5 @@ Description: ProcMgr Library
 Version: 2.0.0
 Requires: 
 Libs: -L\${libdir} -lprocmgr
-Cflags: -I\${includedir}
+Cflags: -I\${includedir}\syslink
 EOF

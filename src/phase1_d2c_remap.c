@@ -44,8 +44,10 @@
 static int SysLinkMemUtils_virtToPhys(uint32_t remoteAddr, uint32_t *physAddr,
                                       int procId)
 {
+    if(0) P("%p=%d", physAddr, *physAddr);
     *physAddr = remoteAddr;
-    return 0;
+    if(0) P("%p=%d", physAddr, *physAddr);
+    return 1;
 }
 #define PROC_APPM3 3
 #else
@@ -228,15 +230,18 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
     for (ix = 0; ix < num_blocks; ix++)
     {
         /* check the length of each block */
-        if (NOT_I(lengths[ix] & (PAGE_SIZE - 1),==,0)) goto FAIL;
+        if (NOT_I(lengths[ix] & (PAGE_SIZE - 1),==,0)) goto FAILURE;
 
         /* convert DSPtrs to SSPtrs using SysLink */
-        SysLinkMemUtils_virtToPhys(dsptrs[ix], (uint32_t *)&(buf.blocks[ix].ssptr), PROC_APPM3);
+        uint32_t ssptr = 0;
+        if (NOT_I(SysLinkMemUtils_virtToPhys(dsptrs[ix], &ssptr, PROC_APPM3),>,0))
+            goto FAILURE;
+
         if(0) dump_block(buf.blocks + ix, "<=v2s==", "");
-        SSPtr ssptr = buf.blocks[ix].ssptr;
-        if (NOT_P(buf.blocks[ix].ssptr,!=,0)) {
+        buf.blocks[ix].ssptr = ssptr;
+        if (NOT_P(ssptr,!=,0)) {
             P("for dsptrs[%d]=0x%x", ix, dsptrs[ix]);
-            goto FAIL;
+            goto FAILURE;
         }
 
         /* query tiler driver for details on these blocks, such as
@@ -248,7 +253,7 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
         if (NOT_I(res,==,0) || NOT_I(buf.blocks[ix].ssptr,!=,0))
         {
             P("tiler did not allocate dsptr[%d]=0x%x ssptr=0x%x", ix, dsptrs[ix], ssptr);
-            goto FAIL;
+            goto FAILURE;
         }
 
         /* :TODO: for now we fix width to have 4K stride, and get length and
@@ -295,7 +300,7 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
     if(0) dump_buf(&buf, "==(RBUF)=>");
     res = ioctl(td, TILIOC_RBUF, &buf);
     if(0) dump_buf(&buf, "<=(RBUF)==");
-    if (NOT_I(res,==,0) || NOT_P(buf.offset,!=,0)) goto FAIL;
+    if (NOT_I(res,==,0) || NOT_P(buf.offset,!=,0)) goto FAILURE;
 
     /* map blocks to process space */
     bufPtr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED,
@@ -327,7 +332,7 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
         }
     }
 
-FAIL:
+FAILURE:
     close(td);
 #endif
     return R_P(bufPtr);
