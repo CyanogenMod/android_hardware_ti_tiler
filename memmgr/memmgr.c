@@ -46,7 +46,7 @@ typedef struct tiler_block_info tiler_block_info;
 #include "tilermem_utils.h"
 #include "memmgr.h"
 
-#ifdef _STUB_TILER
+#ifdef STUB_TILER
 SSPtr TilerMgr_PageModeAlloc(bytes_t l) { return 1; }
 SSPtr TilerMgr_Alloc(enum tiler_fmt fmt, pixels_t w, pixels_t h) { return 1; }
 SSPtr TilerMgr_Map(void *p, bytes_t l) { return 1; }
@@ -55,6 +55,7 @@ int TilerMgr_Free(SSPtr p) { return 0; }
 int TilerMgr_Unmap(SSPtr p) { return 0; }
 int TilerMgr_Open() { return 0; }
 int TilerMgr_Close() { return 0; }
+int TilerMgr_VirtToPhys(void *ptr) { return (SSPtr) ptr; }
 #else
 #include "tilermgr.h"
 SSPtr TilerMgr_Map(void *p, bytes_t l) { return 0; }
@@ -115,7 +116,7 @@ static int inc_ref()
     if (!refCnt++) {
         /* initialize lists */
         init();
-#ifndef _STUB_TILER
+#ifndef STUB_TILER
         td = open("/dev/tiler", O_RDWR | O_SYNC);
         if (NOT_I(td,>=,0)) res = MEMMGR_ERR_GENERIC;
         ERR_ADD(res, TilerMgr_Open());
@@ -149,7 +150,7 @@ static int dec_ref()
 
     if (refCnt <= 0) res = MEMMGR_ERR_GENERIC;
     else if (!--refCnt) {
-#ifndef _STUB_TILER
+#ifndef STUB_TILER
         close(td);
         td = -1;
         res = A_I(TilerMgr_Close(),==,0);
@@ -368,7 +369,7 @@ static void dump_buf(struct tiler_buf_info* buf, char* prefix)
  */
 static enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
 {
-#ifndef _STUB_TILER
+#ifndef STUB_TILER
     return (ssptr == 0              ? TILFMT_INVALID :
             ssptr < TILER_MEM_8BIT  ? TILFMT_NONE :
             ssptr < TILER_MEM_16BIT ? TILFMT_8BIT :
@@ -542,7 +543,7 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
     buf.num_blocks = num_blocks;
     /* memcpy(buf.blocks, blks, sizeof(tiler_block_info) * num_blocks); */
     for (ix = 0; ix < num_blocks; ix++) memcpy(buf.blocks + ix, blks + ix, sizeof(tiler_block_info));
-#ifndef _STUB_TILER
+#ifndef STUB_TILER
     dump_buf(&buf, "==(RBUF)=>");
     int ret = ioctl(td, TILIOC_RBUF, &buf);
     dump_buf(&buf, "<=(RBUF)==");
@@ -556,7 +557,7 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
     if (NOT_P(buf.offset,!=,0)) return NULL;
 
     /* map blocks to process space */
-#ifndef _STUB_TILER
+#ifndef STUB_TILER
     void *bufPtr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED,
                         td, buf.offset);
     if (bufPtr == MAP_FAILED){
@@ -584,7 +585,7 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
     /* if failed to map: unregister buffer */
     if (NOT_P(bufPtr,!=,NULL))
     {
-#ifndef _STUB_TILER
+#ifndef STUB_TILER
         A_I(ioctl(td, TILIOC_URBUF, &buf),==,0);
 #else
         FREE(buf_c);
@@ -603,7 +604,7 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
             blks[ix].ptr = bufPtr + size;
             /* P("   [0x%p]", blks[ix].ptr); */
             size += def_size(blks + ix);
-#ifdef _STUB_TILER
+#ifdef STUB_TILER
             blks[ix].ssptr = (uint32_t) blks[ix].ptr;
 #else
             blks[ix].ptr = (void *)((((uint32_t)blks[ix].ptr) & ~(PAGE_SIZE - 1)) | (blks[ix].ssptr & (PAGE_SIZE - 1)));
@@ -779,7 +780,7 @@ int MemMgr_Free(void *bufPtr)
 
     if (A_L(buf.offset,!=,0))
     {
-#ifndef _STUB_TILER
+#ifndef STUB_TILER
         /* get block information for the buffer */
         dump_buf(&buf, "==(QBUF)=>");
         ret = A_I(ioctl(td, TILIOC_QBUF, &buf),==,0);
@@ -833,7 +834,7 @@ void *MemMgr_Map(MemAllocBlock blocks[], int num_blocks)
     if (NOT_I(num_blocks,==,1) ||
         NOT_I(blocks[0].pixelFormat,==,PIXEL_FMT_PAGE) ||
         NOT_I(blocks[0].dim.len & (PAGE_SIZE - 1),==,0) ||
-#ifdef _STUB_TILER
+#ifdef STUB_TILER
         NOT_I(MemMgr_IsMapped(blocks[0].ptr),==,0) ||
 #endif
         NOT_I((uint32_t)blocks[0].ptr & (PAGE_SIZE - 1),==,0))
@@ -884,7 +885,7 @@ int MemMgr_UnMap(void *bufPtr)
 
     if (A_L(buf.offset,!=,0))
     {
-#ifndef _STUB_TILER
+#ifndef STUB_TILER
         /* get block information for the buffer */
         dump_buf(&buf, "==(QBUF)=>");
         ret = A_I(ioctl(td, TILIOC_QBUF, &buf),==,0);
@@ -954,7 +955,7 @@ bool MemMgr_IsMapped(void *ptr)
 bytes_t MemMgr_GetStride(void *ptr)
 {
     IN;
-#ifndef _STUB_TILER
+#ifndef STUB_TILER
     struct tiler_buf_info buf;
     ZERO(buf);
 
@@ -1035,7 +1036,7 @@ bytes_t TilerMem_GetStride(SSPtr ssptr)
 
 SSPtr TilerMem_VirtToPhys(void *ptr)
 {
-#ifndef _STUB_TILER
+#ifndef STUB_TILER
     SSPtr ssptr = 0;
     if(!NOT_I(inc_ref(),==,0))
     {

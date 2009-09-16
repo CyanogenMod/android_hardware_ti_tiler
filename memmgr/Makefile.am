@@ -5,7 +5,11 @@ ACLOCAL_AMFLAGS=-I m4
 ## sources
 
 h_sources = memmgr.h tilermem.h mem_types.h
+if STUB_TILER
+c_sources = memmgr.c
+else
 c_sources = memmgr.c tilermgr.c
+endif
 
 if TILERMGR
 library_include_HEADERS = $(h_sources) tilermgr.h

@@ -12,7 +12,7 @@ read VALUE
 export PREFIX=${VALUE:=$PREFIX}
 
 # path to userspace-syslink git root
-echo "Enter path to userspace-syslink (currently 'USERSPACE_SYSLINK'):\c"
+echo "Enter path to userspace-syslink (currently '$USERSPACE_SYSLINK'):\c"
 read VALUE
 export USERSPACE_SYSLINK=${VALUE:=$USERSPACE_SYSLINK}
 
@@ -51,6 +51,21 @@ then
     exit
 fi
 echo Found libgcc.a in $LIBGCC
+LIBRT=$TOOLDIR/../$HOST/libc/lib/librt*.so
+if [ ! -e $LIBRT ]
+then
+    echo "Could not find librt.so"
+    exit
+fi
+echo Found librt.so in $LIBRT
+LIBPTHREAD=$TOOLDIR/../$HOST/libc/lib/libpthread*.so
+if [ ! -e $LIBPTHREAD ]
+then
+    echo "Could not find libpthread.so"
+    exit
+fi
+echo Found libpthread.so in $LIBPTHREAD
+
 
 # 1) First you need to build memmgr
 # =============================================================================
@@ -65,15 +80,16 @@ ENABLE_TILERMGR=--enable-tilermgr
 cd ${TILER_USERSPACE}/memmgr
 ./bootstrap.sh
 ./configure --prefix ${PREFIX} --host ${HOST} ${ENABLE_UNIT_TESTS} ${ENABLE_TILERMGR}
-make clean
 make
 make install
 
 # 2) Second you need to build syslink
 # =============================================================================
 
-#.. need libgcc.a
+#.. need libgcc.a, librt.so and libpthread.so
 cp $LIBGCC ${PREFIX}/lib
+cp `dirname $LIBRT`/librt*.so* ${PREFIX}/lib
+cp `dirname $LIBPTHREAD`/libpthread*.so* ${PREFIX}/lib
 
 #.. syslink prefix needs a target subdirectory, so we will create link to the
 #   parent
@@ -97,7 +113,6 @@ export PKG_CONFIG_PATH=${PREFIX}/lib/pkgconfig
 ./mk-libprocmgr-pc.sh ${PREFIX} ${USERSPACE_SYSLINK}
 ./bootstrap.sh
 ./configure --prefix ${PREFIX} --host ${HOST} ${ENABLE_UNIT_TESTS}
-make clean
 make
 make install
 

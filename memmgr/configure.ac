@@ -55,8 +55,10 @@ if test "$target" != "arm-none-linux-gnueabi"
 then
   echo "Stubbing tiler and syslink on none-arm system."
   AC_DEFINE([STUB_TILER],[1],[Use tiler stub])
+  stub_tiler=true
 fi
 
+AM_CONDITIONAL(STUB_TILER, test x$stub_tiler = xtrue)
 
 AC_CONFIG_FILES([Makefile tests/Makefile])
 AC_OUTPUT

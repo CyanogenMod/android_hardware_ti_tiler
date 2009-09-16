@@ -5,7 +5,11 @@ ACLOCAL_AMFLAGS=-I m4
 CFLAGS=-Wall -pipe -ansi -I.. -I../../utils
 
 ## sources
-bin_PROGRAMS = utils_test tiler_test memmgr_test
+bin_PROGRAMS = utils_test memmgr_test
+
+if !STUB_TILER
+  bin_PROGRAMS += tiler_test
+endif
 
 utils_testdir = .
 utils_test_SOURCES = utils_test.c testlib.c

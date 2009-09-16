@@ -20,6 +20,7 @@
 #define __DEBUG_ASSERT__
 
 #undef __WRITE_IN_STRIDE__
+#undef STAR_TRACE_MEM
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -84,6 +85,7 @@
     T(neg_map_tests())\
     T(neg_unmap_tests())\
     T(neg_check_tests())\
+    T(page_size_test())\
     T(maxalloc_2D_test(2500, 32, PIXEL_FMT_8BIT, MAX_ALLOCS))\
     T(maxalloc_2D_test(2500, 16, PIXEL_FMT_16BIT, MAX_ALLOCS))\
     T(maxalloc_2D_test(1250, 16, PIXEL_FMT_32BIT, MAX_ALLOCS))\
@@ -110,7 +112,7 @@
     T(maxalloc_2D_test(176, 144, PIXEL_FMT_16BIT, MAX_ALLOCS))\
     T(maxalloc_2D_test(176, 144, PIXEL_FMT_32BIT, MAX_ALLOCS))\
     T(maxalloc_NV12_test(176, 144, MAX_ALLOCS))\
-    T(map_1D_test(176 * 144 * 2, MAX_ALLOCS))\
+    T(maxmap_1D_test(176 * 144 * 2, MAX_ALLOCS))\
     T(maxalloc_1D_test(640 * 480 * 2, MAX_ALLOCS))\
     T(maxalloc_2D_test(640, 480, PIXEL_FMT_8BIT, MAX_ALLOCS))\
     T(maxalloc_2D_test(640, 480, PIXEL_FMT_16BIT, MAX_ALLOCS))\
@@ -725,6 +727,18 @@ int unmap_1D(void *dataPtr, bytes_t length, bytes_t stride, uint16_t val, void *
 }
 
 /**
+ * Tests the MemMgr_PageSize method.
+ * 
+ * @author a0194118 (9/15/2009)
+ * 
+ * @return 0 on success, non-0 error value on failure. 
+ */
+int page_size_test()
+{
+    return NOT_I(MemMgr_PageSize(),==,PAGE_SIZE);
+}
+
+/**
  * This method tests the allocation and freeing of a 1D tiled 
  * buffer. 
  * 
@@ -1144,6 +1158,7 @@ int star_test(uint32_t num_ops, uint16_t num_slots)
             }
 
             /* check all previous buffers */
+#ifdef STAR_TRACE_MEM
             for (ix = 0; ix < num_slots; ix++)
             {
                 MemAllocBlock blk;
@@ -1188,6 +1203,7 @@ int star_test(uint32_t num_ops, uint16_t num_slots)
                     check_mem(mem[ix].val, &blk);
                 }
             }
+#endif
         }
     }
 
