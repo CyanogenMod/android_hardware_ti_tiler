@@ -30,6 +30,22 @@
  * Ducati virtual address and the block size) in a consecutive 
  * fashion into one virtual buffer on Chiron. 
  *  
+ * :NOTE: this function does not work correctly for 2D buffers
+ * of the following geometries:
+ * 
+ *  16-bit, width > 2048, h <= 16
+ *  32-bit, width > 1024, h <= 16
+ *  32-bit, width > 2048, h < 22
+ * 
+ * This is due to limitations of the API definition, as tiler 
+ * driver does not keep track of exact widths and heights of its
+ * allocated blocks, and the remapping algorithm is trying to
+ * determine the page-width of each block.  For buffers
+ * mentioned above there are multiple solutions, and the
+ * algorithm picks the incorrect one.
+ * 
+ * This limitation will not apply in phase 2.
+ *  
  * @author a0194118 (9/9/2009)
  * 
  * @param num_blocks   Number of blocks to remap
