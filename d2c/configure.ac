@@ -3,11 +3,11 @@
 
 AC_PREREQ(2.61)
 AC_INIT(memmgr, 1.00, http://www.ti.com)
-AC_CONFIG_SRCDIR([src/memmgr.c])
+AC_CONFIG_SRCDIR([phase1_d2c_remap.c])
 AC_CONFIG_HEADER([config.h])
 AC_CANONICAL_SYSTEM
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE([memmgr], [1.00])
+AM_INIT_AUTOMAKE([d2cmap], [1.00])
 LT_INIT
 
 # Checks for programs.
@@ -37,18 +37,11 @@ PKG_CHECK_MODULES([SYSLINK], [libprocmgr], [
   echo "SYSLINK found"
 ], [
   echo "SYSLINK not found. Stub enabled."
-  # AC_DEFINE([STUB_SYSLINK],[1])
+  AC_DEFINE([STUB_SYSLINK],[1])
+  stub_syslink=true
 ])
 
 AC_SUBST(STUB_SYSLINK)
-
-AC_ARG_ENABLE(tilermgr,
-[  --enable-tilermgr    Include TilerMgr headers],
-[case "${enableval}" in
-  yes) tilermgr=true ;;
-  no)  tilermgr=false ;;
-  *) AC_MSG_ERROR(bad value ${enableval} for --enable-tilermgr) ;;
-esac],[tilermgr=false])
 
 AC_ARG_ENABLE(unit_tests,
 [  --enable-unit-tests    Build unit tests],
@@ -56,19 +49,20 @@ AC_ARG_ENABLE(unit_tests,
   yes) unit_tests=true ;;
   no)  unit_tests=false ;;
   *) AC_MSG_ERROR(bad value ${enableval} for --enable-unittests) ;;
-esac],[tilermgr=false])
+esac],[unit_tests=false])
 
 AM_CONDITIONAL(UNIT_TESTS, test x$unit_tests = xtrue)
-
-AM_CONDITIONAL(TILERMGR, test x$tilermgr = xtrue)
 
 if test "$target" != "arm-none-linux-gnueabi"
 then
   echo "Stubbing tiler and syslink on none-arm system."
+  stub_syslink=true
   AC_DEFINE([STUB_TILER],[1],[Use tiler stub])
   AC_DEFINE([STUB_SYSLINK],[1],[Use syslink stub])
 fi
 
-AC_CONFIG_FILES([Makefile src/Makefile test/Makefile])
+AM_CONDITIONAL(STUB_SYSLINK, test x$stub_syslink = xtrue)
+
+AC_CONFIG_FILES([Makefile tests/Makefile])
 AC_OUTPUT
 
