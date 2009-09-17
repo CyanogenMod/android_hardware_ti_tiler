@@ -20,6 +20,7 @@
 #include <string.h>
 #include "testlib.h"
 #include <utils.h>
+#include <debug_utils.h>
 
 #define TESTLIB_OK          0
 #define TESTLIB_FAIL        1
@@ -46,13 +47,13 @@ int __internal__TestLib_Report(int res)
     switch (res)
     {
         case TESTLIB_UNAVAILABLE:
-            printf("==> TEST NOT AVAILABLE\n");
+            P("==> TEST NOT AVAILABLE\n");
             return TESTLIB_UNAVAILABLE;
         case 0:
-            printf("==> TEST OK\n");
+            P("==> TEST OK\n");
             return TESTLIB_OK;
         default:
-            printf("==> TEST FAIL(%d)\n", res);
+            P("==> TEST FAIL(%d)\n", res);
             return TESTLIB_FAIL;
     }
 }
@@ -101,13 +102,13 @@ int TestLib_Run(int argc, char **argv, void(*init_fn)(void *),
     }
     else
     {
-        fprintf(stderr, "Usage: %s [<range>], where <range> is\n"
-                "   empty:   run all tests\n"
-                "   list:    list tests\n"
-                "   ix:      run test #ix\n"
-                "   a ..:    run tests #a, #a+1, ...\n"
-                "   .. b:    run tests #1, #2, .. #b\n"
-                "   a .. b:  run tests #a, #a+1, .. #b\n", argv[0]);
+        P("Usage: %s [<range>], where <range> is\n"
+          "   empty:   run all tests\n"
+          "   list:    list tests\n"
+          "   ix:      run test #ix\n"
+          "   a ..:    run tests #a, #a+1, ...\n"
+          "   .. b:    run tests #1, #2, .. #b\n"
+          "   a .. b:  run tests #a, #a+1, .. #b\n", argv[0]);
         return -1;
     }
 
@@ -120,11 +121,11 @@ int TestLib_Run(int argc, char **argv, void(*init_fn)(void *),
         if (res == TESTLIB_FAIL) failed++;
         else if (res == TESTLIB_OK) succeeded++;
         else if (res == TESTLIB_UNAVAILABLE) unavailable++;
-        printf("so far FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
+        P("so far FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
            unavailable);
     } while (res != TESTLIB_INVALID && (end < 0 || start <= end));
 
-    printf("FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
+    P("FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
            unavailable);
 
     /* also execute internal unit tests - this also verifies that we did not

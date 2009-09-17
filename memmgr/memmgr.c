@@ -73,7 +73,7 @@ struct _AllocData {
         struct _AllocData *me;
     } link;
 };
-static struct _AllocList bufs;
+static struct _AllocList bufs = {0};
 static int bufs_inited = 0;
 
 typedef struct _AllocList _AllocList;
