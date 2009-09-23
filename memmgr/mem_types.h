@@ -17,6 +17,9 @@
 #ifndef _MEM_TYPES_H_
 #define _MEM_TYPES_H_
 
+/* for bool definition */
+#include <stdbool.h>
+
 /** ---------------------------------------------------------------------------
  * Type definitions
  */
@@ -31,10 +34,6 @@ typedef uint32_t bytes_t;
  */ 
 typedef uint16_t pixels_t;
 
-/**
- * Boolean
- */
-typedef int bool;
 
 /**
  * Pixel format 
