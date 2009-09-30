@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "testlib.h"
+
 #include <utils.h>
 #include <debug_utils.h>
 
@@ -47,13 +48,16 @@ int __internal__TestLib_Report(int res)
     switch (res)
     {
         case TESTLIB_UNAVAILABLE:
-            P("==> TEST NOT AVAILABLE\n");
+            printf("==> TEST NOT AVAILABLE\n");
+            fflush(stdout);
             return TESTLIB_UNAVAILABLE;
         case 0:
-            P("==> TEST OK\n");
+            printf("==> TEST OK\n");
+            fflush(stdout);
             return TESTLIB_OK;
         default:
-            P("==> TEST FAIL(%d)\n", res);
+            printf("==> TEST FAIL(%d)\n", res);
+            fflush(stdout);
             return TESTLIB_FAIL;
     }
 }
@@ -102,13 +106,14 @@ int TestLib_Run(int argc, char **argv, void(*init_fn)(void *),
     }
     else
     {
-        P("Usage: %s [<range>], where <range> is\n"
+        fprintf(stderr, "Usage: %s [<range>], where <range> is\n"
           "   empty:   run all tests\n"
           "   list:    list tests\n"
           "   ix:      run test #ix\n"
           "   a ..:    run tests #a, #a+1, ...\n"
           "   .. b:    run tests #1, #2, .. #b\n"
           "   a .. b:  run tests #a, #a+1, .. #b\n", argv[0]);
+        fflush(stderr);
         return -1;
     }
 
@@ -121,12 +126,14 @@ int TestLib_Run(int argc, char **argv, void(*init_fn)(void *),
         if (res == TESTLIB_FAIL) failed++;
         else if (res == TESTLIB_OK) succeeded++;
         else if (res == TESTLIB_UNAVAILABLE) unavailable++;
-        P("so far FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
+        printf("so far FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
            unavailable);
+        fflush(stdout);
     } while (res != TESTLIB_INVALID && (end < 0 || start <= end));
 
-    P("FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
+    printf("FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
            unavailable);
+    fflush(stdout);
 
     /* also execute internal unit tests - this also verifies that we did not
        keep any references */
