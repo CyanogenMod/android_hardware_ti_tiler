@@ -30,7 +30,7 @@ then
 fi
 
 TOOLBIN=`dirname $TOOL`
-echo "Enter tool path (currently '$TOOL'):\c"
+echo "Enter tool path (currently '$TOOLBIN'):\c"
 read VALUE
 TOOLBIN=${VALUE:=$TOOLBIN}
 
@@ -87,14 +87,14 @@ make install
 # =============================================================================
 
 #.. need libgcc.a, librt.so and libpthread.so
+mkdir -p ${PREFIX}/lib
 cp $LIBGCC ${PREFIX}/lib
 cp `dirname $LIBRT`/librt*.so* ${PREFIX}/lib
 cp `dirname $LIBPTHREAD`/libpthread*.so* ${PREFIX}/lib
 
 #.. syslink prefix needs a target subdirectory, so we will create link to the
 #   parent
-
-ln -s ${PREFIX} ${PREFIX}/target
+if [ ! -d ${PREFIX}/target ]; then ln -s ${PREFIX} ${PREFIX}/target; fi
 
 cd ${USERSPACE_SYSLINK}/api/src
 make
