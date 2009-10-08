@@ -27,6 +27,7 @@
 
 #define __DEBUG__
 #define __DEBUG_ASSERT__
+#undef  __DEBUG0__
 
 #ifdef HAVE_CONFIG_H
     #include "config.h"
@@ -40,13 +41,58 @@
 #include "memmgr.h"
 #include "tiler.h"
 
+/* ----- START debug only methods ----- */
+
+#ifdef __DEBUG0__
+static bytes_t def_bpp(pixel_fmt_t pixelFormat);
+static void __dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
+{
+    switch (blk->fmt)
+    {
+    case PIXEL_FMT_PAGE:
+        P("%s [p=%p(0x%lx),l=0x%lx,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
+          blk->dim.len, blk->stride, suffix);
+        break;
+    case PIXEL_FMT_8BIT:
+    case PIXEL_FMT_16BIT:
+    case PIXEL_FMT_32BIT:
+        P("%s [p=%p(0x%lx),%d*%d*%d,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
+          blk->dim.area.width, blk->dim.area.height, def_bpp(blk->fmt) * 8,
+          blk->stride, suffix);
+        break;
+    default:
+        P("%s*[p=%p(0x%lx),l=0x%lx,s=%ld,fmt=0x%x]%s", prefix, blk->ptr,
+          blk->ssptr, blk->dim.len, blk->stride, blk->fmt, suffix);
+    }
+}
+
+static void __dump_buf(struct tiler_buf_info* buf, char* prefix)
+{
+    P("%sbuf={n=%d,id=0x%x,", prefix, buf->num_blocks, buf->offset);
+    int ix = 0;
+    for (ix = 0; ix < buf->num_blocks; ix++)
+    {
+        __dump_block(buf->blocks + ix, "", ix + 1 == buf->num_blocks ? "}" : "");
+    }
+}
+#define P0 P
+#define DP0 DP
+#else
+#define P0(fmt, ...)
+#define DP0(fmt, ...)
+#define __dump_block(blk, ...)
+#define __dump_buf(buf, ...)
+#endif
+
+/* ----- END debug only methods ----- */
+
 #ifdef STUB_SYSLINK
 static int SysLinkMemUtils_virtToPhys(uint32_t remoteAddr, uint32_t *physAddr,
                                       int procId)
 {
-    if(0) P("%p=%d", physAddr, *physAddr);
+    P0("%p=%d", physAddr, *physAddr);
     *physAddr = remoteAddr;
-    if(0) P("%p=%d", physAddr, *physAddr);
+    P0("%p=%d", physAddr, *physAddr);
     return 1;
 }
 #define PROC_APPM3 3
@@ -93,37 +139,6 @@ static bytes_t def_bpp(pixel_fmt_t pixelFormat)
 static bytes_t def_stride(pixels_t width)
 {
     return (PAGE_SIZE - 1 + (bytes_t)width) & ~(PAGE_SIZE - 1);
-}
-
-static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
-{
-    switch (blk->fmt)
-    {
-    case PIXEL_FMT_PAGE:
-        P("%s [p=%p(0x%lx),l=0x%lx,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
-          blk->dim.len, blk->stride, suffix);
-        break;
-    case PIXEL_FMT_8BIT:
-    case PIXEL_FMT_16BIT:
-    case PIXEL_FMT_32BIT:
-        P("%s [p=%p(0x%lx),%d*%d*%d,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
-          blk->dim.area.width, blk->dim.area.height, def_bpp(blk->fmt) * 8,
-          blk->stride, suffix);
-        break;
-    default:
-        P("%s*[p=%p(0x%lx),l=0x%lx,s=%ld,fmt=0x%x]%s", prefix, blk->ptr,
-          blk->ssptr, blk->dim.len, blk->stride, blk->fmt, suffix);
-    }
-}
-
-static void dump_buf(struct tiler_buf_info* buf, char* prefix)
-{
-    P("%sbuf={n=%d,id=0x%x,", prefix, buf->num_blocks, buf->offset);
-    int ix = 0;
-    for (ix = 0; ix < buf->num_blocks; ix++)
-    {
-        dump_block(buf->blocks + ix, "", ix + 1 == buf->num_blocks ? "}" : "");
-    }
 }
 
 /**
@@ -236,7 +251,7 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
         if (NOT_I(SysLinkMemUtils_virtToPhys(dsptrs[ix], &ssptr, PROC_APPM3),>,0))
             goto FAILURE;
 
-        if(0) dump_block(buf.blocks + ix, "<=v2s==", "");
+        __dump_block(buf.blocks + ix, "<=v2s==", "");
         buf.blocks[ix].ssptr = ssptr;
         if (NOT_P(ssptr,!=,0)) {
             P("for dsptrs[%d]=0x%x", ix, dsptrs[ix]);
@@ -245,9 +260,9 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
 
         /* query tiler driver for details on these blocks, such as
            width/height/len/fmt */
-        if(0) dump_block(buf.blocks + ix, "=(qb)=>", "");
+        __dump_block(buf.blocks + ix, "=(qb)=>", "");
         res = ioctl(td, TILIOC_QUERY_BLK, buf.blocks + ix);
-        if(0) dump_block(buf.blocks + ix, "<=(qb)=", "");
+        __dump_block(buf.blocks + ix, "<=(qb)=", "");
 
         if (NOT_I(res,==,0) || NOT_I(buf.blocks[ix].ssptr,!=,0))
         {
@@ -285,8 +300,8 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
             int limit = buf.blocks[ix].stride / PAGE_SIZE;
             if (max_page_width > limit)
             {
-                if(0) P("lowering max_page_width from %d to %d",
-                  max_page_width, limit);
+                P0("lowering max_page_width from %d to %d", max_page_width,
+                   limit);
                 max_page_width = limit;
             }
 
@@ -295,8 +310,8 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
             limit -= buf.blocks[ix].fmt == TILFMT_8BIT ? 0 : 1;
             if (min_page_width < limit)
             {
-                if(0) P("raising min_page_width from %d to %d",
-                  min_page_width, limit);
+                P0("raising min_page_width from %d to %d", min_page_width,
+                   limit);
                 min_page_width = limit;
             }
             CHK_I(min_page_width,<=,max_page_width);
@@ -318,9 +333,9 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
     }
 
     /* register this buffer and/or query last registration */
-    if(0) dump_buf(&buf, "==(RBUF)=>");
+    __dump_buf(&buf, "==(RBUF)=>");
     res = ioctl(td, TILIOC_RBUF, &buf);
-    if(0) dump_buf(&buf, "<=(RBUF)==");
+    __dump_buf(&buf, "<=(RBUF)==");
     if (NOT_I(res,==,0) || NOT_P(buf.offset,!=,0)) goto FAILURE;
 
     /* map blocks to process space */
@@ -331,7 +346,7 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
     } else {
         bufPtr += buf.blocks[0].ssptr & (PAGE_SIZE - 1);
     }
-    if(0) DP("ptr=%p", bufPtr);
+    DP0("ptr=%p", bufPtr);
 
     /* if failed to map: unregister buffer */
     if (NOT_P(bufPtr,!=,NULL))
@@ -378,17 +393,17 @@ int tiler_assisted_phase1_DeMap(void *bufPtr)
     if (A_L(buf.offset,!=,0))
     {
         /* get block information for the buffer */
-        if(0) dump_buf(&buf, "==(QBUF)=>");
+        __dump_buf(&buf, "==(QBUF)=>");
         ret = A_I(ioctl(td, TILIOC_QBUF, &buf),==,0);
-        if(0) dump_buf(&buf, "<=(QBUF)==");
+        __dump_buf(&buf, "<=(QBUF)==");
 
         /* unregister buffer, and free tiler chunks even if there is an
            error */
         if (!ret)
         {
-            if(0) dump_buf(&buf, "==(URBUF)=>");
+            __dump_buf(&buf, "==(URBUF)=>");
             ret = A_I(ioctl(td, TILIOC_URBUF, &buf),==,0);
-            if(0) dump_buf(&buf, "<=(URBUF)==");
+            __dump_buf(&buf, "<=(URBUF)==");
     
             /* unmap buffer */
             bytes_t size = 0;
