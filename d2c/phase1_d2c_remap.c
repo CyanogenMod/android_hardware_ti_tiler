@@ -126,7 +126,6 @@ static void dump_buf(struct tiler_buf_info* buf, char* prefix)
     }
 }
 
-
 /**
  * Initializes the static structures
  * 
@@ -265,18 +264,40 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
         }
         else
         {
-            /* get number of horizontal pages in the 2d area from the length,
-               then get the height of the buffer.  The width of the buffer will
-               always be the stride, as it is not tracked by tiler. */
+            /* :TRICKY: get number of horizontal pages in the 2d area from the
+               length, then get the height of the buffer.  The width of the
+               buffer will always be rounded up to the 8-bit stride (64 tiled
+               pages), and the exact width is not tracked by tiler. */
+
+            /* get the minimum and maximum allocation size for a 1-page
+               virtual width buffer, and use this and the size of a block to
+               establish limits on the stride */
             bytes_t max_alloc_size = (bytes_t)buf.blocks[ix].dim.area.height * PAGE_SIZE;
             bytes_t min_alloc_size = max_alloc_size - (buf.blocks[ix].fmt == TILFMT_8BIT ? 63 : 31) * PAGE_SIZE;
             int min_page_width = (lengths[ix] + max_alloc_size - 1) / max_alloc_size;
             int max_page_width = lengths[ix] / min_alloc_size;
-            if (max_page_width > buf.blocks[ix].stride / PAGE_SIZE)
+
+            /* use tiler-returned stride as the another max, but note that
+               this is calculated based on the allocated length.
+             
+               :TODO: this should really not be calculated by the driver as
+               it does not have this information. */
+            int limit = buf.blocks[ix].stride / PAGE_SIZE;
+            if (max_page_width > limit)
             {
                 if(0) P("lowering max_page_width from %d to %d",
-                  max_page_width, buf.blocks[ix].stride / PAGE_SIZE);
-                max_page_width = buf.blocks[ix].stride / PAGE_SIZE;
+                  max_page_width, limit);
+                max_page_width = limit;
+            }
+
+            /* use the width of the tiler allocation (tiler-returned stride)
+               to establish a minimum stride that would justify such an allocation. */
+            limit -= buf.blocks[ix].fmt == TILFMT_8BIT ? 0 : 1;
+            if (min_page_width < limit)
+            {
+                if(0) P("raising min_page_width from %d to %d",
+                  min_page_width, limit);
+                min_page_width = limit;
             }
             CHK_I(min_page_width,<=,max_page_width);
 
