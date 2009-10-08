@@ -33,16 +33,14 @@
  * :NOTE: this function does not work correctly for 2D buffers
  * of the following geometries:
  * 
- *  16-bit, width > 2048, h <= 16
- *  32-bit, width > 1024, h <= 16
- *  32-bit, width > 2048, h < 22
+ *  16-bit, width > 73.148 * height
+ *  32-bit, width > 36.574 * height
  * 
  * This is due to limitations of the API definition, as tiler 
  * driver does not keep track of exact widths and heights of its
  * allocated blocks, and the remapping algorithm is trying to
  * determine the page-width of each block.  For buffers
  * mentioned above there are multiple solutions, and the
- * algorithm picks the incorrect one.
  * 
  * This limitation will not apply in phase 2.
  *  
@@ -55,11 +53,13 @@
  *                     block.
  * @param lengths      Array of block lenghts (one for each 
  *                     block).  This is the desired length of
- *                     the blocks on the Chiron.  These are used
- *                     to infer the height of 2D buffers, and
- *                     the length of 1D buffers, as the tiler
- *                     driver does not keep track of exact
- *                     block sizes, only allocated block sizes.
+ *                     the blocks on the Chiron, and must be
+ *                     multiples of the page size. These are
+ *                     also used to infer the height of 2D
+ *                     buffers, and the length of 1D buffers, as
+ *                     the tiler driver does not keep track of
+ *                     exact block sizes, only allocated block
+ *                     sizes.
  * 
  * @return Pointer to the remapped combined buffer.  NULL on 
  *         failure.
