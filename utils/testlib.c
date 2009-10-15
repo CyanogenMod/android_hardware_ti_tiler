@@ -19,7 +19,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "testlib.h"
+
 #include <utils.h>
+#include <debug_utils.h>
 
 #define TESTLIB_OK          0
 #define TESTLIB_FAIL        1
@@ -47,12 +49,15 @@ int __internal__TestLib_Report(int res)
     {
         case TESTLIB_UNAVAILABLE:
             printf("==> TEST NOT AVAILABLE\n");
+            fflush(stdout);
             return TESTLIB_UNAVAILABLE;
         case 0:
             printf("==> TEST OK\n");
+            fflush(stdout);
             return TESTLIB_OK;
         default:
             printf("==> TEST FAIL(%d)\n", res);
+            fflush(stdout);
             return TESTLIB_FAIL;
     }
 }
@@ -102,12 +107,13 @@ int TestLib_Run(int argc, char **argv, void(*init_fn)(void *),
     else
     {
         fprintf(stderr, "Usage: %s [<range>], where <range> is\n"
-                "   empty:   run all tests\n"
-                "   list:    list tests\n"
-                "   ix:      run test #ix\n"
-                "   a ..:    run tests #a, #a+1, ...\n"
-                "   .. b:    run tests #1, #2, .. #b\n"
-                "   a .. b:  run tests #a, #a+1, .. #b\n", argv[0]);
+          "   empty:   run all tests\n"
+          "   list:    list tests\n"
+          "   ix:      run test #ix\n"
+          "   a ..:    run tests #a, #a+1, ...\n"
+          "   .. b:    run tests #1, #2, .. #b\n"
+          "   a .. b:  run tests #a, #a+1, .. #b\n", argv[0]);
+        fflush(stderr);
         return -1;
     }
 
@@ -122,10 +128,12 @@ int TestLib_Run(int argc, char **argv, void(*init_fn)(void *),
         else if (res == TESTLIB_UNAVAILABLE) unavailable++;
         printf("so far FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
            unavailable);
+        fflush(stdout);
     } while (res != TESTLIB_INVALID && (end < 0 || start <= end));
 
     printf("FAILED: %d, SUCCEEDED: %d, UNAVAILABLE: %d\n", failed, succeeded,
            unavailable);
+    fflush(stdout);
 
     /* also execute internal unit tests - this also verifies that we did not
        keep any references */

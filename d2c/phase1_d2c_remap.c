@@ -27,6 +27,7 @@
 
 #define __DEBUG__
 #define __DEBUG_ASSERT__
+#undef  __DEBUG0__
 
 #ifdef HAVE_CONFIG_H
     #include "config.h"
@@ -40,13 +41,58 @@
 #include "memmgr.h"
 #include "tiler.h"
 
+/* ----- START debug only methods ----- */
+
+#ifdef __DEBUG0__
+static bytes_t def_bpp(pixel_fmt_t pixelFormat);
+static void __dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
+{
+    switch (blk->fmt)
+    {
+    case PIXEL_FMT_PAGE:
+        P("%s [p=%p(0x%lx),l=0x%lx,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
+          blk->dim.len, blk->stride, suffix);
+        break;
+    case PIXEL_FMT_8BIT:
+    case PIXEL_FMT_16BIT:
+    case PIXEL_FMT_32BIT:
+        P("%s [p=%p(0x%lx),%d*%d*%d,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
+          blk->dim.area.width, blk->dim.area.height, def_bpp(blk->fmt) * 8,
+          blk->stride, suffix);
+        break;
+    default:
+        P("%s*[p=%p(0x%lx),l=0x%lx,s=%ld,fmt=0x%x]%s", prefix, blk->ptr,
+          blk->ssptr, blk->dim.len, blk->stride, blk->fmt, suffix);
+    }
+}
+
+static void __dump_buf(struct tiler_buf_info* buf, char* prefix)
+{
+    P("%sbuf={n=%d,id=0x%x,", prefix, buf->num_blocks, buf->offset);
+    int ix = 0;
+    for (ix = 0; ix < buf->num_blocks; ix++)
+    {
+        __dump_block(buf->blocks + ix, "", ix + 1 == buf->num_blocks ? "}" : "");
+    }
+}
+#define P0 P
+#define DP0 DP
+#else
+#define P0(fmt, ...)
+#define DP0(fmt, ...)
+#define __dump_block(blk, ...)
+#define __dump_buf(buf, ...)
+#endif
+
+/* ----- END debug only methods ----- */
+
 #ifdef STUB_SYSLINK
 static int SysLinkMemUtils_virtToPhys(uint32_t remoteAddr, uint32_t *physAddr,
                                       int procId)
 {
-    if(0) P("%p=%d", physAddr, *physAddr);
+    P0("%p=%d", physAddr, *physAddr);
     *physAddr = remoteAddr;
-    if(0) P("%p=%d", physAddr, *physAddr);
+    P0("%p=%d", physAddr, *physAddr);
     return 1;
 }
 #define PROC_APPM3 3
@@ -94,38 +140,6 @@ static bytes_t def_stride(pixels_t width)
 {
     return (PAGE_SIZE - 1 + (bytes_t)width) & ~(PAGE_SIZE - 1);
 }
-
-static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
-{
-    switch (blk->fmt)
-    {
-    case PIXEL_FMT_PAGE:
-        P("%s [p=%p(0x%lx),l=0x%lx,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
-          blk->dim.len, blk->stride, suffix);
-        break;
-    case PIXEL_FMT_8BIT:
-    case PIXEL_FMT_16BIT:
-    case PIXEL_FMT_32BIT:
-        P("%s [p=%p(0x%lx),%d*%d*%d,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
-          blk->dim.area.width, blk->dim.area.height, def_bpp(blk->fmt) * 8,
-          blk->stride, suffix);
-        break;
-    default:
-        P("%s*[p=%p(0x%lx),l=0x%lx,s=%ld,fmt=0x%x]%s", prefix, blk->ptr,
-          blk->ssptr, blk->dim.len, blk->stride, blk->fmt, suffix);
-    }
-}
-
-static void dump_buf(struct tiler_buf_info* buf, char* prefix)
-{
-    P("%sbuf={n=%d,id=0x%x,", prefix, buf->num_blocks, buf->offset);
-    int ix = 0;
-    for (ix = 0; ix < buf->num_blocks; ix++)
-    {
-        dump_block(buf->blocks + ix, "", ix + 1 == buf->num_blocks ? "}" : "");
-    }
-}
-
 
 /**
  * Initializes the static structures
@@ -237,7 +251,7 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
         if (NOT_I(SysLinkMemUtils_virtToPhys(dsptrs[ix], &ssptr, PROC_APPM3),>,0))
             goto FAILURE;
 
-        if(0) dump_block(buf.blocks + ix, "<=v2s==", "");
+        __dump_block(buf.blocks + ix, "<=v2s==", "");
         buf.blocks[ix].ssptr = ssptr;
         if (NOT_P(ssptr,!=,0)) {
             P("for dsptrs[%d]=0x%x", ix, dsptrs[ix]);
@@ -246,9 +260,9 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
 
         /* query tiler driver for details on these blocks, such as
            width/height/len/fmt */
-        if(0) dump_block(buf.blocks + ix, "=(qb)=>", "");
+        __dump_block(buf.blocks + ix, "=(qb)=>", "");
         res = ioctl(td, TILIOC_QUERY_BLK, buf.blocks + ix);
-        if(0) dump_block(buf.blocks + ix, "<=(qb)=", "");
+        __dump_block(buf.blocks + ix, "<=(qb)=", "");
 
         if (NOT_I(res,==,0) || NOT_I(buf.blocks[ix].ssptr,!=,0))
         {
@@ -265,18 +279,40 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
         }
         else
         {
-            /* get number of horizontal pages in the 2d area from the length,
-               then get the height of the buffer.  The width of the buffer will
-               always be the stride, as it is not tracked by tiler. */
+            /* :TRICKY: get number of horizontal pages in the 2d area from the
+               length, then get the height of the buffer.  The width of the
+               buffer will always be rounded up to the 8-bit stride (64 tiled
+               pages), and the exact width is not tracked by tiler. */
+
+            /* get the minimum and maximum allocation size for a 1-page
+               virtual width buffer, and use this and the size of a block to
+               establish limits on the stride */
             bytes_t max_alloc_size = (bytes_t)buf.blocks[ix].dim.area.height * PAGE_SIZE;
             bytes_t min_alloc_size = max_alloc_size - (buf.blocks[ix].fmt == TILFMT_8BIT ? 63 : 31) * PAGE_SIZE;
             int min_page_width = (lengths[ix] + max_alloc_size - 1) / max_alloc_size;
             int max_page_width = lengths[ix] / min_alloc_size;
-            if (max_page_width > buf.blocks[ix].stride / PAGE_SIZE)
+
+            /* use tiler-returned stride as the another max, but note that
+               this is calculated based on the allocated length.
+             
+               :TODO: this should really not be calculated by the driver as
+               it does not have this information. */
+            int limit = buf.blocks[ix].stride / PAGE_SIZE;
+            if (max_page_width > limit)
             {
-                if(0) P("lowering max_page_width from %d to %d",
-                  max_page_width, buf.blocks[ix].stride / PAGE_SIZE);
-                max_page_width = buf.blocks[ix].stride / PAGE_SIZE;
+                P0("lowering max_page_width from %d to %d", max_page_width,
+                   limit);
+                max_page_width = limit;
+            }
+
+            /* use the width of the tiler allocation (tiler-returned stride)
+               to establish a minimum stride that would justify such an allocation. */
+            limit -= buf.blocks[ix].fmt == TILFMT_8BIT ? 0 : 1;
+            if (min_page_width < limit)
+            {
+                P0("raising min_page_width from %d to %d", min_page_width,
+                   limit);
+                min_page_width = limit;
             }
             CHK_I(min_page_width,<=,max_page_width);
 
@@ -297,9 +333,9 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
     }
 
     /* register this buffer and/or query last registration */
-    if(0) dump_buf(&buf, "==(RBUF)=>");
+    __dump_buf(&buf, "==(RBUF)=>");
     res = ioctl(td, TILIOC_RBUF, &buf);
-    if(0) dump_buf(&buf, "<=(RBUF)==");
+    __dump_buf(&buf, "<=(RBUF)==");
     if (NOT_I(res,==,0) || NOT_P(buf.offset,!=,0)) goto FAILURE;
 
     /* map blocks to process space */
@@ -310,7 +346,7 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
     } else {
         bufPtr += buf.blocks[0].ssptr & (PAGE_SIZE - 1);
     }
-    if(0) DP("ptr=%p", bufPtr);
+    DP0("ptr=%p", bufPtr);
 
     /* if failed to map: unregister buffer */
     if (NOT_P(bufPtr,!=,NULL))
@@ -357,17 +393,17 @@ int tiler_assisted_phase1_DeMap(void *bufPtr)
     if (A_L(buf.offset,!=,0))
     {
         /* get block information for the buffer */
-        if(0) dump_buf(&buf, "==(QBUF)=>");
+        __dump_buf(&buf, "==(QBUF)=>");
         ret = A_I(ioctl(td, TILIOC_QBUF, &buf),==,0);
-        if(0) dump_buf(&buf, "<=(QBUF)==");
+        __dump_buf(&buf, "<=(QBUF)==");
 
         /* unregister buffer, and free tiler chunks even if there is an
            error */
         if (!ret)
         {
-            if(0) dump_buf(&buf, "==(URBUF)=>");
+            __dump_buf(&buf, "==(URBUF)=>");
             ret = A_I(ioctl(td, TILIOC_URBUF, &buf),==,0);
-            if(0) dump_buf(&buf, "<=(URBUF)==");
+            __dump_buf(&buf, "<=(URBUF)==");
     
             /* unmap buffer */
             bytes_t size = 0;

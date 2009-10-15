@@ -25,6 +25,7 @@
     if (!id || i == id) printf("TEST #% 3d - %s\n", i, #test); \
     if (i == id) { \
         printf("TEST_DESC - "); \
+        fflush(stdout); \
         return __internal__TestLib_Report(test); \
     }
 
