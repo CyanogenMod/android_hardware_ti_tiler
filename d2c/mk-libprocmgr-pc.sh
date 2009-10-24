@@ -36,5 +36,5 @@ Description: ProcMgr Library
 Version: 2.0.0
 Requires: 
 Libs: -L${ROOT}/target/lib -lprocmgr -lutils
-Cflags: -I${ROOT}/api/include
+Cflags: -I${ROOT}/syslink/api/include
 EOF

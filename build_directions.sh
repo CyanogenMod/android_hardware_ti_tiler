@@ -12,7 +12,7 @@ read VALUE
 export PREFIX=${VALUE:=$PREFIX}
 
 # path to userspace-syslink git root
-echo "Enter path to userspace-syslink (currently '$USERSPACE_SYSLINK'):\c"
+echo "Enter path to userspace-syslink git root (currently '$USERSPACE_SYSLINK'):\c"
 read VALUE
 export USERSPACE_SYSLINK=${VALUE:=$USERSPACE_SYSLINK}
 
@@ -80,6 +80,7 @@ ENABLE_TILERMGR=--enable-tilermgr
 cd ${TILER_USERSPACE}/memmgr
 ./bootstrap.sh
 ./configure --prefix ${PREFIX} --host ${HOST} ${ENABLE_UNIT_TESTS} ${ENABLE_TILERMGR}
+make clean
 make
 make install
 
@@ -96,12 +97,19 @@ cp `dirname $LIBPTHREAD`/libpthread*.so* ${PREFIX}/lib
 #   parent
 if [ ! -d ${PREFIX}/target ]; then ln -s ${PREFIX} ${PREFIX}/target; fi
 
-cd ${USERSPACE_SYSLINK}/api/src
+cd ${USERSPACE_SYSLINK}/syslink
+./autogen.sh
+./configure --prefix ${PREFIX} --bindir ${PREFIX}/syslink --host ${HOST} ${ENABLE_DEBUG}
+cd -
+cd ${USERSPACE_SYSLINK}/syslink/api
+make clean
 make
 make install
 cd -
-cd ${USERSPACE_SYSLINK}/daemons
-make TILER_INC_PATH=${TILER_USERSPACE}/memmgr
+cd ${USERSPACE_SYSLINK}/syslink/daemons
+export TILER_INC_PATH=${TILER_USERSPACE}/memmgr
+make clean
+make
 make install
 cd -
 
@@ -113,6 +121,7 @@ export PKG_CONFIG_PATH=${PREFIX}/lib/pkgconfig
 ./mk-libprocmgr-pc.sh ${PREFIX} ${USERSPACE_SYSLINK}
 ./bootstrap.sh
 ./configure --prefix ${PREFIX} --host ${HOST} ${ENABLE_UNIT_TESTS}
+make clean
 make
 make install
 
