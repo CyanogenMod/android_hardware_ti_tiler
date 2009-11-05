@@ -27,7 +27,8 @@
 
 #define __DEBUG__
 #define __DEBUG_ASSERT__
-#undef  __DEBUG0__
+#define  __DEBUG0__
+#define __DEBUG_ENTRY__
 
 #ifdef HAVE_CONFIG_H
     #include "config.h"

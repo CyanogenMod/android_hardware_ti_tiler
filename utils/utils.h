@@ -31,6 +31,9 @@
 /* allocation macro */
 #define NEW(type)    (type*)calloc(1, sizeof(type))
 #define NEWN(type,n) (type*)calloc(n, sizeof(type))
+#define ALLOC(var)    var = calloc(1, sizeof(*var))
+#define ALLOCN(var,n) var = calloc(n, sizeof(*var))
+
 
 /* free variable and set it to NULL */
 #define FREE(var)    S_ { free(var); var = NULL; } _S

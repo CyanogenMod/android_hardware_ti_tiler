@@ -629,7 +629,7 @@ int free_NV12(pixels_t width, pixels_t height, uint16_t val, void *bufPtr)
     blocks[1].pixelFormat = PIXEL_FMT_16BIT;
     blocks[1].dim.area.width  = width >> 1;
     blocks[1].dim.area.height = height >> 1;
-    blocks[1].stride = def_stride(width * 2);
+    blocks[1].stride = def_stride(width);
     blocks[1].ptr = bufPtr + blocks[0].stride * height;
 
     int ret = A_I(check_mem(val, blocks),==,0);

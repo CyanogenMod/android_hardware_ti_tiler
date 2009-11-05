@@ -5,7 +5,7 @@ ACLOCAL_AMFLAGS=-I m4
 CFLAGS=-Wall -pipe -ansi -I.. -I../../utils
 
 ## sources
-bin_PROGRAMS = utils_test memmgr_test
+bin_PROGRAMS = utils_test memmgr_test tiler_ptest
 
 if !STUB_TILER
   bin_PROGRAMS += tiler_test
@@ -20,4 +20,7 @@ memmgr_test_LDADD = ../libmemmgr.la
 
 tiler_test_SOURCES = tiler_test.c
 tiler_test_LDADD = ../libmemmgr.la
+
+tiler_ptest_SOURCES = tiler_ptest.c
+tiler_ptest_LDADD = ../libmemmgr.la
 
