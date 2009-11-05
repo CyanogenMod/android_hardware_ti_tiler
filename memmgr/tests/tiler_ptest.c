@@ -399,7 +399,7 @@ int free_buf(int num_blocks, MemAllocBlock blocks[], uint16_t val, void *bufPtr)
     for (i = 0; i < num_blocks; i++)
     {
         blk = blocks[i];
-        blk.ptr = bufPtr;
+        blk.ptr = ptr;
         ERR_ADD(ret, check_mem(val, &blk));
         if (blk.pixelFormat != PIXEL_FMT_PAGE)
         {
