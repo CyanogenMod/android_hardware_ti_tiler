@@ -520,10 +520,11 @@ int param_test(int argc, char **argv)
         {
             res = 1;
             q = parse_num(p, &ix);
-            if (NOT_P(q,!=,NULL) || NOT_I(ix,>=,0)) break;
+            if (NOT_P(q,!=,NULL) || NOT_I(ix,>,0)) break;
             p = q;
-            if (NOT_I(*p++,==,'=')) break;
+            if (NOT_I(*p++,==,'.')) break;
             res = 0;
+            ix--;
         }
 
         type = *p++;
@@ -572,6 +573,7 @@ int param_test(int argc, char **argv)
             case 'a': buf.type = ptr_alloced; max_n = TILER_MAX_NUM_BLOCKS; break;
             case 'A': buf.type = ptr_tiler_alloced; max_n = 1; break;
             }
+            if (ix < num_slots && NOT_I(slots[ix].type,==,ptr_empty)) break;
 			if (NOT_I(*p++,==,':')) break;
             for (n = 0; *p && n < max_n; n++) {
                 /* read length or width */
