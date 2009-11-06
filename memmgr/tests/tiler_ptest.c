@@ -501,11 +501,12 @@ char *parse_num(char *p, int *tgt)
 int param_test(int argc, char **argv)
 {
     int delta_slots = 16;
-	int ix, i, n, t, res = 0, type, max_n, num_slots = delta_slots;
+	int ix, i, n, t, type, max_n, num_slots = delta_slots;
     struct ptr_info *slots;
     ALLOCN(slots, num_slots);
     if (NOT_P(slots,!=,NULL)) return 1;
 
+    int res = TilerMgr_Open();
     for (i = 1; i < argc && !res; i++)
 	{
         uint16_t val = (uint16_t) rand();
@@ -682,6 +683,7 @@ int param_test(int argc, char **argv)
             ERR_ADD(res, res_free);
         }
     }
+    ERR_ADD(res, TilerMgr_Close());
 
     FREE(slots);
 	return res;
