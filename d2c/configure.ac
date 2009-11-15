@@ -34,7 +34,7 @@ AC_CHECK_FUNCS([munmap strerror])
 
 AC_CHECK_PROG([HAVE_PKGCONFIG], [pkg-config], [yes], [no])
 
-PKG_CHECK_MODULES([SYSLINK], [libprocmgr], [
+PKG_CHECK_MODULES([SYSLINK], [syslink], [
   echo "SYSLINK found"
 ], [
   echo "SYSLINK not found. Stub enabled."
@@ -68,6 +68,6 @@ fi
 
 AM_CONDITIONAL(STUB_SYSLINK, test x$stub_syslink = xtrue)
 
-AC_CONFIG_FILES([Makefile tests/Makefile])
+AC_CONFIG_FILES([Makefile tests/Makefile libd2cmap.pc])
 AC_OUTPUT
 
