@@ -6,6 +6,7 @@ AC_INIT(memmgr, 1.00, http://www.ti.com)
 AC_CONFIG_SRCDIR([memmgr.c])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_SYSTEM
 AM_INIT_AUTOMAKE([memmgr], [1.00])
 LT_INIT
@@ -37,7 +38,7 @@ AC_ARG_ENABLE(tilermgr,
   yes) tilermgr=true ;;
   no)  tilermgr=false ;;
   *) AC_MSG_ERROR(bad value ${enableval} for --enable-tilermgr) ;;
-esac],[tilermgr=false])
+esac],[tilermgr=true])
 
 AC_ARG_ENABLE(unit_tests,
 [  --enable-unit-tests    Build unit tests],
@@ -45,11 +46,11 @@ AC_ARG_ENABLE(unit_tests,
   yes) unit_tests=true ;;
   no)  unit_tests=false ;;
   *) AC_MSG_ERROR(bad value ${enableval} for --enable-unittests) ;;
-esac],[tilermgr=false])
+esac],[unit_tests=false])
 
 AM_CONDITIONAL(UNIT_TESTS, test x$unit_tests = xtrue)
 
-AM_CONDITIONAL(TILERMGR, test x$tilermgr = xtrue)
+AM_CONDITIONAL(TILERMGR, test x$tilermgr != xfalse)
 
 if test "$target" != "arm-none-linux-gnueabi"
 then
@@ -60,6 +61,6 @@ fi
 
 AM_CONDITIONAL(STUB_TILER, test x$stub_tiler = xtrue)
 
-AC_CONFIG_FILES([Makefile tests/Makefile])
+AC_CONFIG_FILES([libmemmgr.pc Makefile tests/Makefile])
 AC_OUTPUT
 

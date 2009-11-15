@@ -5,6 +5,7 @@ AC_PREREQ(2.61)
 AC_INIT(memmgr, 1.00, http://www.ti.com)
 AC_CONFIG_SRCDIR([phase1_d2c_remap.c])
 AC_CONFIG_HEADER([config.h])
+AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_SYSTEM
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([d2cmap], [1.00])
@@ -40,6 +41,10 @@ PKG_CHECK_MODULES([SYSLINK], [libprocmgr], [
   AC_DEFINE([STUB_SYSLINK],[1])
   stub_syslink=true
 ])
+
+# Check for libraries
+PKG_CHECK_MODULES([MEMMGR], [libmemmgr])
+
 
 AC_SUBST(STUB_SYSLINK)
 

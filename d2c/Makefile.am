@@ -9,7 +9,7 @@ library_include_HEADERS = phase1_d2c_remap.h
 lib_LTLIBRARIES= libd2cmap.la
 
 libd2cmap_la_SOURCES = phase1_d2c_remap.c
-libd2cmap_la_CFLAGS  = -Wall -fpic -pipe -I../utils -I../memmgr
+libd2cmap_la_CFLAGS  = -Wall -fpic -pipe -I$(top_srcdir)/../utils $(MEMMGR_CFLAGS)
 libd2cmap_la_LIBTOOLFLAGS = --tag=disable-static
 libd2cmap_la_LDFLAGS = -version-info 0:0:0
 

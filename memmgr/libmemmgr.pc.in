@@ -1,0 +1,13 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libmemmgr
+Description: TILER memory manager
+Version: @VERSION@
+Requires: 
+Libs: -L${libdir} -lmemmgr
+Cflags: -I${includedir}/tiler
+
+
