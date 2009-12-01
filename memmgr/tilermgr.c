@@ -109,7 +109,7 @@ SSPtr TilerMgr_PageModeAlloc(bytes_t len)
     ret = ioctl(fd, TILIOC_GBUF, (unsigned long)(&block));
     if (ret < 0) {
         TILERMGR_ERROR();
-        return TILERMGR_ERR_GENERIC;
+        return 0x0;
     }
     return block.ssptr;
 }
