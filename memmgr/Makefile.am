@@ -4,7 +4,7 @@ ACLOCAL_AMFLAGS=-I m4
 
 ## sources
 
-h_sources = tiler.h tilermem_utils.h memmgr.h tilermem.h mem_types.h
+h_sources = memmgr.h tilermem.h mem_types.h tiler.h tilermem_utils.h
 if STUB_TILER
 c_sources = memmgr.c
 else
@@ -15,10 +15,11 @@ if TILERMGR
 library_include_HEADERS = $(h_sources) tilermgr.h
 else
 library_include_HEADERS = $(h_sources)
+noinst_HEADERS = tilermgr.h
 endif
 
 #Install the headers in library directory - e.g. examplelib-1.0:
-library_includedir=$(includedir)/tiler
+library_includedir=$(includedir)/memmgr
 
 # library sources
 lib_LTLIBRARIES= libmemmgr.la
@@ -28,8 +29,6 @@ libmemmgr_la_SOURCES = $(h_sources) $(c_sources)
 libmemmgr_la_CFLAGS  = -Wall -fpic -pipe -ansi -I$(top_srcdir)/../utils
 libmemmgr_la_LIBTOOLFLAGS = --tag=disable-static
 libmemmgr_la_LDFLAGS = -version-info 0:0:0
- 
-noinst_HEADERS = tiler.h tilermem_utils.h
 
 if UNIT_TESTS
 SUBDIRS = . tests

@@ -8,6 +8,6 @@ Description: TILER memory manager
 Version: @VERSION@
 Requires: 
 Libs: -L${libdir} -lmemmgr
-Cflags: -I${includedir}/tiler
+Cflags: -I${includedir}/memmgr
 
 
