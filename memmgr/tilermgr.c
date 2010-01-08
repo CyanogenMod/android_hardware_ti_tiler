@@ -146,3 +146,41 @@ SSPtr TilerMgr_VirtToPhys(void *ptr)
     return (SSPtr)ret;
 }
 
+SSPtr TilerMgr_Map(void *ptr, bytes_t len)
+{
+    int ret = -1;
+    struct tiler_block_info block = {0};
+
+    if (len < 0 || len > TILER_LENGTH)
+        return 0x0;
+
+    block.fmt = TILFMT_PAGE;
+    block.dim.len = len;
+    block.ptr = ptr;
+
+    ret = ioctl(fd, TILIOC_MBUF, (unsigned long)(&block));
+    if (ret < 0) {
+        TILERMGR_ERROR();
+        return 0x0;
+    }
+    return block.ssptr;
+}
+
+int TilerMgr_Unmap(SSPtr addr)
+{
+    int ret = -1;
+    struct tiler_block_info block = {0};
+
+    if (addr < TILER_MEM_PAGED || addr >= TILER_MEM_END)
+        return TILERMGR_ERR_GENERIC;
+
+    block.ssptr = addr;
+
+    ret = ioctl(fd, TILIOC_UMBUF, (unsigned long)(&block));
+    if (ret < 0) {
+        TILERMGR_ERROR();
+        return TILERMGR_ERR_GENERIC;
+    }
+    return TILERMGR_ERR_NONE;
+}
+

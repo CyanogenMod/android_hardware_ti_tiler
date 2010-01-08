@@ -58,8 +58,6 @@ int TilerMgr_Close() { return 0; }
 int TilerMgr_VirtToPhys(void *ptr) { return (SSPtr) ptr; }
 #else
 #include "tilermgr.h"
-SSPtr TilerMgr_Map(void *p, bytes_t l) { return 0; }
-int TilerMgr_Unmap(SSPtr p) { return TILERMGR_ERR_GENERIC; }
 #endif
 
 /* list of allocations */

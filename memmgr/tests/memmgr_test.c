@@ -19,6 +19,7 @@
 #undef __DEBUG_ENTRY__
 #define __DEBUG_ASSERT__
 
+#define __MAP_OK__
 #undef __WRITE_IN_STRIDE__
 #undef STAR_TRACE_MEM
 
@@ -820,7 +821,7 @@ int map_1D_test(bytes_t length, bytes_t stride)
     length = (length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
     printf("Mapping and UnMapping 0x%xb 1D buffer\n", length);
 
-#if __MAP_OK__
+#ifdef __MAP_OK__
     /* allocate aligned buffer */
     void *buffer = malloc(length + PAGE_SIZE - 1);
     void *dataPtr = (void *)(((uint32_t)buffer + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1));
@@ -1555,6 +1556,7 @@ int neg_map_tests()
     block[0].dim.len -= 5;
     ret |= NEGM(MemMgr_Map(block, 1));
 
+#ifndef __MAP_OK__
     P("/* Mapping a tiled 1D buffer */");
     void *ptr = alloc_1D(PAGE_SIZE * 2, 0, 0);
     dataPtr = (void *)(((uint32_t)ptr + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1));
@@ -1563,6 +1565,7 @@ int neg_map_tests()
     ret |= NEGM(MemMgr_Map(block, 1));
 
     MemMgr_Free(ptr);
+#endif
 
     return ret;
 }
