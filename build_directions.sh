@@ -55,11 +55,13 @@ echo USERSPACE_SYSLINK is ${USERSPACE_SYSLINK}
 
 export PATH=${TOOLBIN}:$PATH
 
+export TILER_USERSPACE=`readlink -f ${DIR}`
+
 # 1) First you need to build memmgr
 # =============================================================================
 
 #.. uncomment to include our unit tests as well
-ENABLE_UNIT_TESTS=--enable-unit-tests
+# ENABLE_TESTS=--enable-tests
 
 #.. uncomment to export the tilermgr.h header - this is currently needed by
 #   syslink
@@ -67,7 +69,7 @@ ENABLE_UNIT_TESTS=--enable-unit-tests
 
 cd ${TILER_USERSPACE}/memmgr
 ./bootstrap.sh
-./configure --prefix ${PREFIX} --host ${HOST} ${ENABLE_UNIT_TESTS} ${ENABLE_TILERMGR}
+./configure --prefix ${PREFIX} --host ${HOST} ${ENABLE_TESTS} ${ENABLE_TILERMGR}
 make clean
 make
 make install
@@ -90,7 +92,7 @@ cd -
 cd ${TILER_USERSPACE}/d2c
 export PKG_CONFIG_PATH=${PREFIX}/lib/pkgconfig
 ./bootstrap.sh
-./configure --prefix ${PREFIX} --host ${HOST} ${ENABLE_UNIT_TESTS}
+./configure --prefix ${PREFIX} --host ${HOST} ${ENABLE_TESTS}
 make clean
 make
 make install

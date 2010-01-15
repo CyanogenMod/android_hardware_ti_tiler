@@ -3,7 +3,7 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: d2c
+Name: d2cmap
 Description: Ducati to Chiron Tiler block remap Interface for TI OMAP processors
 Version: @VERSION@
 Requires: 

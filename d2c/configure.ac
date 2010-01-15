@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(memmgr, 1.00, http://www.ti.com)
+AC_INIT(d2cmap, 1.00, http://www.ti.com)
 AC_CONFIG_SRCDIR([phase1_d2c_remap.c])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_AUX_DIR([config])
@@ -48,15 +48,15 @@ PKG_CHECK_MODULES([MEMMGR], [libmemmgr])
 
 AC_SUBST(STUB_SYSLINK)
 
-AC_ARG_ENABLE(unit_tests,
-[  --enable-unit-tests    Build unit tests],
+AC_ARG_ENABLE(tests,
+[  --enable-tests    Build unit tests],
 [case "${enableval}" in
-  yes) unit_tests=true ;;
-  no)  unit_tests=false ;;
-  *) AC_MSG_ERROR(bad value ${enableval} for --enable-unittests) ;;
-esac],[unit_tests=false])
+  yes) tests=true ;;
+  no)  tests=false ;;
+  *) AC_MSG_ERROR(bad value ${enableval} for --enable-tests) ;;
+esac],[tests=false])
 
-AM_CONDITIONAL(UNIT_TESTS, test x$unit_tests = xtrue)
+AM_CONDITIONAL(UNIT_TESTS, test x$tests = xtrue)
 
 if test "$target" != "arm-none-linux-gnueabi"
 then
