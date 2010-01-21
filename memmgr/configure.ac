@@ -61,6 +61,10 @@ fi
 
 AM_CONDITIONAL(STUB_TILER, test x$stub_tiler = xtrue)
 
+# Project build flags
+MEMMGR_CFLAGS="-Werror -pipe -ansi"
+AC_SUBST(MEMMGR_CFLAGS)
+
 AC_CONFIG_FILES([libmemmgr.pc Makefile tests/Makefile])
 AC_OUTPUT
 

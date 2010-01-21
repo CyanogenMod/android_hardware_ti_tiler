@@ -2,7 +2,7 @@ AUTOMAKE_OPTIONS = foreign
 
 ACLOCAL_AMFLAGS=-I m4
 
-CFLAGS=-Wall -pipe -ansi -I.. -I../../utils
+CFLAGS=$(MEMMGR_CFLAGS) -ansi -I$(top_srcdir) -I$(top_srcdir)/../utils
 
 ## sources
 bin_PROGRAMS = utils_test memmgr_test tiler_ptest

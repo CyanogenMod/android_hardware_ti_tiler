@@ -45,8 +45,12 @@ PKG_CHECK_MODULES([SYSLINK], [syslink], [
 # Check for libraries
 PKG_CHECK_MODULES([MEMMGR], [libmemmgr])
 
-
 AC_SUBST(STUB_SYSLINK)
+
+# Project build flags
+# :NOTE: syslink does not compile with -ansi
+D2C_CFLAGS="-Werror -pipe"
+AC_SUBST(D2C_CFLAGS)
 
 AC_ARG_ENABLE(tests,
 [  --enable-tests    Build unit tests],
