@@ -23,17 +23,15 @@
 #define TILER_MEM_PAGED 0x78000000
 #define TILER_MEM_END   0x80000000
 
-#define TILER_PAGESIZE 0x1000
+#define TILER_PAGE 0x1000
 #define TILER_WIDTH    256
 #define TILER_HEIGHT   128
 #define TILER_BLOCK_WIDTH  64
 #define TILER_BLOCK_HEIGHT 64
-#define TILER_LENGTH   TILER_WIDTH*TILER_HEIGHT*TILER_PAGESIZE
+#define TILER_LENGTH (TILER_WIDTH * TILER_HEIGHT * TILER_PAGE)
 
 #define TILER_DEVICE_PATH "/dev/tiler"
 #define TILER_MAX_NUM_BLOCKS 16
-
-extern int errno;
 
 enum tiler_fmt {
 	TILFMT_MIN     = -1,
@@ -47,37 +45,35 @@ enum tiler_fmt {
 };
 
 struct area {
-	unsigned short width;
-	unsigned short height;
+	uint16_t width;
+	uint16_t height;
 };
 
 struct tiler_block_info {
 	enum tiler_fmt fmt;
 	union {
 		struct area area;
-		unsigned long len;
+		uint32_t len;
 	} dim;
-	unsigned long stride;
+	uint32_t stride;
 	void *ptr;
-	unsigned long ssptr;
+	uint32_t ssptr;
 };
 
 struct tiler_buf_info {
-	int num_blocks;
+	int32_t num_blocks;
 	struct tiler_block_info blocks[TILER_MAX_NUM_BLOCKS];
-	int offset;
+	int32_t offset;
 };
 
-#define TILIOC_OPEN  _IOWR('z', 100, unsigned long)
-#define TILIOC_GBUF  _IOWR('z', 101, unsigned long)
-#define TILIOC_FBUF  _IOWR('z', 102, unsigned long)
-#define TILIOC_CLOSE _IOWR('z', 103, unsigned long)
-#define TILIOC_GSSP  _IOWR('z', 104, unsigned long)
-#define TILIOC_MBUF  _IOWR('z', 105, unsigned long)
-#define TILIOC_UMBUF _IOWR('z', 106, unsigned long)
-#define TILIOC_QBUF  _IOWR('z', 107, unsigned long)
-#define TILIOC_RBUF  _IOWR('z', 108, unsigned long)
-#define TILIOC_URBUF _IOWR('z', 109, unsigned long)
-#define TILIOC_QUERY_BLK _IOWR('z', 110, unsigned long)
+#define TILIOC_GBUF  _IOWR('z', 100, uint32_t)
+#define TILIOC_FBUF  _IOWR('z', 101, uint32_t)
+#define TILIOC_GSSP  _IOWR('z', 102, uint32_t)
+#define TILIOC_MBUF  _IOWR('z', 103, uint32_t)
+#define TILIOC_UMBUF _IOWR('z', 104, uint32_t)
+#define TILIOC_QBUF  _IOWR('z', 105, uint32_t)
+#define TILIOC_RBUF  _IOWR('z', 106, uint32_t)
+#define TILIOC_URBUF _IOWR('z', 107, uint32_t)
+#define TILIOC_QUERY_BLK _IOWR('z', 108, uint32_t)
 
 #endif
