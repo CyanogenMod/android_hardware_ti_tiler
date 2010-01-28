@@ -1315,7 +1315,7 @@ int star_tiler_test(uint32_t num_ops, uint16_t num_slots)
             switch (mem[ix].op)
             {
             case 0: /* map 1D buffer */
-#ifdef __MAP_OK__
+#ifndef __MAP_OK__  /* TODO: we need to fix unmap_1D first */
                 /* allocate aligned buffer */
                 length = (length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
                 mem[ix].buffer = malloc(length + PAGE_SIZE - 1);
