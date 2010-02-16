@@ -81,6 +81,11 @@
     T(alloc_2D_test(1920, 1080, PIXEL_FMT_32BIT))\
     T(alloc_NV12_test(1920, 1080))\
     T(map_1D_test(1920 * 1080 * 2, 0))\
+    T(map_1D_test(4096, 0))\
+    T(map_1D_test(8192, 0))\
+    T(map_1D_test(16384, 0))\
+    T(map_1D_test(32768, 0))\
+    T(map_1D_test(65536, 0))\
     T(neg_alloc_tests())\
     T(neg_free_tests())\
     T(neg_map_tests())\
@@ -1315,7 +1320,7 @@ int star_tiler_test(uint32_t num_ops, uint16_t num_slots)
             switch (mem[ix].op)
             {
             case 0: /* map 1D buffer */
-#ifndef __MAP_OK__  /* TODO: we need to fix unmap_1D first */
+#if 0  /* TODO: we need to fix unmap_1D first */
                 /* allocate aligned buffer */
                 length = (length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
                 mem[ix].buffer = malloc(length + PAGE_SIZE - 1);
@@ -1556,7 +1561,7 @@ int neg_map_tests()
     block[0].dim.len -= 5;
     ret |= NEGM(MemMgr_Map(block, 1));
 
-#ifndef __MAP_OK__
+#if 0 /* TODO: it's possible that our va falls within the TILER addr range */
     P("/* Mapping a tiled 1D buffer */");
     void *ptr = alloc_1D(PAGE_SIZE * 2, 0, 0);
     dataPtr = (void *)(((uint32_t)ptr + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1));
