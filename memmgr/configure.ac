@@ -40,15 +40,15 @@ AC_ARG_ENABLE(tilermgr,
   *) AC_MSG_ERROR(bad value ${enableval} for --enable-tilermgr) ;;
 esac],[tilermgr=true])
 
-AC_ARG_ENABLE(unit_tests,
-[  --enable-unit-tests    Build unit tests],
+AC_ARG_ENABLE(tests,
+[  --enable-tests    Build unit tests],
 [case "${enableval}" in
-  yes) unit_tests=true ;;
-  no)  unit_tests=false ;;
-  *) AC_MSG_ERROR(bad value ${enableval} for --enable-unittests) ;;
-esac],[unit_tests=false])
+  yes) tests=true ;;
+  no)  tests=false ;;
+  *) AC_MSG_ERROR(bad value ${enableval} for --enable-tests) ;;
+esac],[tests=false])
 
-AM_CONDITIONAL(UNIT_TESTS, test x$unit_tests = xtrue)
+AM_CONDITIONAL(UNIT_TESTS, test x$tests = xtrue)
 
 AM_CONDITIONAL(TILERMGR, test x$tilermgr != xfalse)
 
@@ -60,6 +60,10 @@ then
 fi
 
 AM_CONDITIONAL(STUB_TILER, test x$stub_tiler = xtrue)
+
+# Project build flags
+MEMMGR_CFLAGS="-Werror -pipe -ansi"
+AC_SUBST(MEMMGR_CFLAGS)
 
 AC_CONFIG_FILES([libmemmgr.pc Makefile tests/Makefile])
 AC_OUTPUT

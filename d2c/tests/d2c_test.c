@@ -315,16 +315,6 @@ static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
     }
 }
 
-static void dump_buf(struct tiler_buf_info* buf, char* prefix)
-{
-    P("%sbuf={n=%d,id=0x%x,", prefix, buf->num_blocks, buf->offset);
-    int ix = 0;
-    for (ix = 0; ix < buf->num_blocks; ix++)
-    {
-        dump_block(buf->blocks + ix, "", ix + 1 == buf->num_blocks ? "}" : "");
-    }
-}
-
 void check_xy(int td, MemAllocBlock *blk, int offset)
 {
     struct tiler_block_info cblk;

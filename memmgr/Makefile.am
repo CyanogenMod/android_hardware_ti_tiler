@@ -26,7 +26,7 @@ lib_LTLIBRARIES= libmemmgr.la
 libmemmgr_la_SOURCES = $(h_sources) $(c_sources)
 # libmemmgr_la_LIBADD= sub/libsub.la
 # libmemmgr_la_LDFLAGS = -version-info $(GENERIC_LIBRARY_VERSION) -release $(GENERIC_RELEASE)
-libmemmgr_la_CFLAGS  = -Wall -fpic -pipe -ansi -I$(top_srcdir)/../utils
+libmemmgr_la_CFLAGS  = $(MEMMGR_CFLAGS) -fpic -I$(top_srcdir)/../utils
 libmemmgr_la_LIBTOOLFLAGS = --tag=disable-static
 libmemmgr_la_LDFLAGS = -version-info 0:0:0
 
