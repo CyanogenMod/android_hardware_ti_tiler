@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <errno.h>
 
 #define BUF_ALLOCED 1
 #define BUF_MAPPED  2
@@ -213,18 +214,24 @@ static bytes_t def_size(tiler_block_info *blk)
  * @param bufPtr    Buffer pointer
  * @param tiler_id  Tiler ID
  * @param buf_type  Buffer type: BUF_ALLOCED or BUF_MAPPED
+ * 
+ * @return 0 on success, -ENOMEM on memory allocation failure
  */
-static void buf_cache_add(void *bufPtr, bytes_t size, uint32_t tiler_id,
+static int buf_cache_add(void *bufPtr, bytes_t size, uint32_t tiler_id,
                           int buf_type)
 {
     pthread_mutex_lock(&che_mutex);
     _AllocData *ad = NEW(_AllocData);
-    ad->bufPtr = bufPtr;
-    ad->size = size;
-    ad->tiler_id = tiler_id;
-    ad->buf_type = buf_type;
-    DLIST_MADD_BEFORE(bufs, ad, link);
+    if (ad)
+    {
+	    ad->bufPtr = bufPtr;
+	    ad->size = size;
+	    ad->tiler_id = tiler_id;
+	    ad->buf_type = buf_type;
+	    DLIST_MADD_BEFORE(bufs, ad, link);
+    }
     pthread_mutex_unlock(&che_mutex);
+    return ad == NULL ? -ENOMEM : 0;
 }
 
 /**
@@ -326,13 +333,13 @@ static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
 #if 1
     switch (blk->fmt)
     {
-    case PIXEL_FMT_PAGE:
+    case TILFMT_PAGE:
         P("%s [p=%p(0x%lx),l=0x%lx,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
           blk->dim.len, blk->stride, suffix);
         break;
-    case PIXEL_FMT_8BIT:
-    case PIXEL_FMT_16BIT:
-    case PIXEL_FMT_32BIT:
+    case TILFMT_8BIT:
+    case TILFMT_16BIT:
+    case TILFMT_32BIT:
         P("%s [p=%p(0x%lx),%d*%d*%d,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
           blk->dim.area.width, blk->dim.area.height, def_bpp(blk->fmt) * 8,
           blk->stride, suffix);
@@ -581,7 +588,9 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
 #endif
 
     /* if failed to map: unregister buffer */
-    if (NOT_P(bufPtr,!=,NULL))
+    if (NOT_P(bufPtr,!=,NULL) ||
+	/* or failed to cache tiler ID for buffer */
+        NOT_I(buf_cache_add(bufPtr, size, buf.offset, buf_type),==,0))
     {
 #ifndef STUB_TILER
         A_I(ioctl(td, TILIOC_URBUF, &buf),==,0);
@@ -593,9 +602,6 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
     /* otherwise, fill out pointers */
     else
     {
-        /* cache tiler ID for buffer */
-        buf_cache_add(bufPtr, size, buf.offset, buf_type);
-
         /* fill out pointers */
         for (size = ix = 0; ix < num_blocks; ix++)
         {

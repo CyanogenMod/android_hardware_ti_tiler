@@ -24,6 +24,7 @@
 #include <tiler.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <errno.h>
 
 #define __DEBUG__
 #define __DEBUG_ASSERT__
@@ -50,13 +51,13 @@ static void __dump_block(struct tiler_block_info *blk, char *prefix, char *suffi
 {
     switch (blk->fmt)
     {
-    case PIXEL_FMT_PAGE:
+    case TILFMT_PAGE:
         P("%s [p=%p(0x%lx),l=0x%lx,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
           blk->dim.len, blk->stride, suffix);
         break;
-    case PIXEL_FMT_8BIT:
-    case PIXEL_FMT_16BIT:
-    case PIXEL_FMT_32BIT:
+    case TILFMT_8BIT:
+    case TILFMT_16BIT:
+    case TILFMT_32BIT:
         P("%s [p=%p(0x%lx),%d*%d*%d,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
           blk->dim.area.width, blk->dim.area.height, def_bpp(blk->fmt) * 8,
           blk->stride, suffix);
@@ -163,16 +164,22 @@ static void init()
  * 
  * @param bufPtr    Buffer pointer
  * @param tiler_id  Tiler ID
+ *  
+ * @return 0 on success, -ENOMEM on memory allocation error
  */
-static void remap_cache_add(void *bufPtr, uint32_t tiler_id)
+static int remap_cache_add(void *bufPtr, uint32_t tiler_id)
 {
     pthread_mutex_lock(&che_mutex);
     init();
     struct _ReMapData *ad = NEW(struct _ReMapData);
-    ad->bufPtr = bufPtr;
-    ad->tiler_id = tiler_id;
-    DLIST_MADD_BEFORE(bufs, ad, link);
+    if (ad)
+    {
+	    ad->bufPtr = bufPtr;
+	    ad->tiler_id = tiler_id;
+	    DLIST_MADD_BEFORE(bufs, ad, link);
+    }
     pthread_mutex_unlock(&che_mutex);
+    return ad == NULL ? -ENOMEM : 0;
 }
 
 /**
@@ -350,16 +357,15 @@ void *tiler_assisted_phase1_D2CReMap(int num_blocks, DSPtr dsptrs[],
     DP0("ptr=%p", bufPtr);
 
     /* if failed to map: unregister buffer */
-    if (NOT_P(bufPtr,!=,NULL))
+    if (NOT_P(bufPtr,!=,NULL) ||
+	/* or failed to cache tiler ID for buffer */
+	NOT_I(remap_cache_add(bufPtr, buf.offset),==,0))
     {
         A_I(ioctl(td, TILIOC_URBUF, &buf),==,0);
     }
     /* otherwise, fill out pointers */
     else
     {
-        /* cache tiler ID for buffer */
-        remap_cache_add(bufPtr, buf.offset);
-
         /* fill out pointers */
         for (size = ix = 0; ix < num_blocks; ix++)
         {
