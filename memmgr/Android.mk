@@ -22,3 +22,4 @@ LOCAL_MODULE    := libmemmgr
 
 include $(BUILD_SHARED_LIBRARY)
 
+include $(LOCAL_PATH)/tests/Android.mk
