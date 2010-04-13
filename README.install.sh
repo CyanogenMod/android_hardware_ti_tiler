@@ -86,14 +86,3 @@ make
 make install
 cd -
 
-# 3) Third you need to build d2cmap library
-# =============================================================================
-
-cd ${TILER_USERSPACE}/d2c
-export PKG_CONFIG_PATH=${PREFIX}/lib/pkgconfig
-./bootstrap.sh
-./configure --prefix ${PREFIX} --host ${HOST} ${ENABLE_TESTS}
-make clean
-make
-make install
-cd -

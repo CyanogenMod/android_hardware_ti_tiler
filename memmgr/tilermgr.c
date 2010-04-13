@@ -19,7 +19,6 @@
 #include <stdint.h>
 #include <string.h>   /* strerror() */
 #include <fcntl.h>    /* open() */
-#include <stropts.h>  /* ioctl() */
 #include <unistd.h>   /* close() */
 #include <errno.h>
 #include <sys/ioctl.h>
@@ -27,7 +26,6 @@
 #include "tilermgr.h"
 #include "mem_types.h"
 
-extern int errno;
 
 #define TILERMGR_ERROR() \
 	fprintf(stderr, "%s()::%d: errno(%d) - \"%s\"\n", \
