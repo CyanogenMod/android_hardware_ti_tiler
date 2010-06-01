@@ -52,14 +52,19 @@ AM_CONDITIONAL(UNIT_TESTS, test x$tests = xtrue)
 
 AM_CONDITIONAL(TILERMGR, test x$tilermgr != xfalse)
 
-if test "$target" != "arm-none-linux-gnueabi"
-then
-  echo "Stubbing tiler and syslink on none-arm system."
-  AC_DEFINE([STUB_TILER],[1],[Use tiler stub])
-  stub_tiler=true
-fi
+AC_ARG_ENABLE(stub,
+[  --enable-stub    Stubbing tiler and syslink on none-arm system],
+[case "${enableval}" in
+  yes) stub_tiler=true ;;
+  no)  stub_tiler=false ;;
+  *) AC_MSG_ERROR(bad value ${enableval} for --enable-stub) ;;
+esac],[stub_tiler=false])
 
 AM_CONDITIONAL(STUB_TILER, test x$stub_tiler = xtrue)
+
+if test x$stub_tiler = xtrue; then
+AC_DEFINE([STUB_TILER],[1],[Use tiler stub])
+fi
 
 # Project build flags
 MEMMGR_CFLAGS="-Werror -pipe -ansi"
