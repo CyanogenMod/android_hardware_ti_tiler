@@ -334,18 +334,18 @@ static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
     switch (blk->fmt)
     {
     case TILFMT_PAGE:
-        P("%s [p=%p(0x%lx),l=0x%lx,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
+        P("%s [p=%p(0x%x),l=0x%x,s=%d]%s", prefix, blk->ptr, blk->ssptr,
           blk->dim.len, blk->stride, suffix);
         break;
     case TILFMT_8BIT:
     case TILFMT_16BIT:
     case TILFMT_32BIT:
-        P("%s [p=%p(0x%lx),%d*%d*%d,s=%ld]%s", prefix, blk->ptr, blk->ssptr,
+        P("%s [p=%p(0x%x),%d*%d*%d,s=%d]%s", prefix, blk->ptr, blk->ssptr,
           blk->dim.area.width, blk->dim.area.height, def_bpp(blk->fmt) * 8,
           blk->stride, suffix);
         break;
     default:
-        P("%s*[p=%p(0x%lx),l=0x%lx,s=%ld,fmt=0x%x]%s", prefix, blk->ptr,
+        P("%s*[p=%p(0x%x),l=0x%x,s=%d,fmt=0x%x]%s", prefix, blk->ptr,
           blk->ssptr, blk->dim.len, blk->stride, blk->fmt, suffix);
     }
 #endif
@@ -575,7 +575,7 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
     void *bufPtr = malloc(size + PAGE_SIZE - 1);
     buf_c[1].blocks[0].ptr = bufPtr;
     bufPtr = (void *)((PAGE_SIZE - 1 + (uint32_t)bufPtr) &~ (PAGE_SIZE - 1));
-    /* P("<= [0x%lx]", size); */
+    /* P("<= [0x%x]", size); */
 
     /* fill out pointers - this is needed for caching 1D/2D type */
     for (size = ix = 0; ix < num_blocks; ix++)
