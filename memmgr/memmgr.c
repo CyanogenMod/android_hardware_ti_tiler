@@ -47,20 +47,6 @@ typedef struct tiler_block_info tiler_block_info;
 #include "tilermem_utils.h"
 #include "memmgr.h"
 
-#ifdef STUB_TILER
-SSPtr TilerMgr_PageModeAlloc(bytes_t l) { return 1; }
-SSPtr TilerMgr_Alloc(enum tiler_fmt fmt, pixels_t w, pixels_t h) { return 1; }
-SSPtr TilerMgr_Map(void *p, bytes_t l) { return 1; }
-int TilerMgr_PageModeFree(SSPtr p) { return 0; }
-int TilerMgr_Free(SSPtr p) { return 0; }
-int TilerMgr_Unmap(SSPtr p) { return 0; }
-int TilerMgr_Open() { return 0; }
-int TilerMgr_Close() { return 0; }
-int TilerMgr_VirtToPhys(void *ptr) { return (SSPtr) ptr; }
-#else
-#include "tilermgr.h"
-#endif
-
 /* list of allocations */
 struct _AllocData {
     void     *bufPtr;
@@ -118,7 +104,6 @@ static int inc_ref()
 #ifndef STUB_TILER
         td = open("/dev/tiler", O_RDWR | O_SYNC);
         if (NOT_I(td,>=,0)) res = MEMMGR_ERR_GENERIC;
-        ERR_ADD(res, TilerMgr_Open());
 #else
         td = 2;
         res = MEMMGR_ERR_NONE;
@@ -152,7 +137,6 @@ static int dec_ref()
 #ifndef STUB_TILER
         close(td);
         td = -1;
-        res = A_I(TilerMgr_Close(),==,0);
 #endif
     }
 
@@ -422,13 +406,9 @@ static SSPtr tiler_alloc(struct tiler_block_info *blk)
 {
     if (0) dump_block(blk, "=(ta)=>", "");
     blk->ptr = NULL;
-    if (blk->fmt == PIXEL_FMT_PAGE)
+    R_I(ioctl(td, TILIOC_GBUF, blk));
+    if (blk->fmt != PIXEL_FMT_PAGE)
     {
-        blk->ssptr = TilerMgr_PageModeAlloc(blk->dim.len);
-    }
-    else
-    {
-        blk->ssptr = TilerMgr_Alloc(blk->fmt, blk->dim.area.width, blk->dim.area.height);
         blk->stride = def_stride(blk->dim.area.width * def_bpp(blk->fmt));
     }
     dump_block(blk, "alloced: ", "");
@@ -446,14 +426,7 @@ static SSPtr tiler_alloc(struct tiler_block_info *blk)
  */
 static int tiler_free(struct tiler_block_info *blk)
 {
-    if (blk->fmt == PIXEL_FMT_PAGE)
-    {
-        return TilerMgr_PageModeFree(blk->ssptr);
-    }
-    else
-    {
-        return TilerMgr_Free(blk->ssptr);
-    }
+    return R_I(ioctl(td, TILIOC_FBUF, blk));
 }
 
 /**
@@ -468,14 +441,7 @@ static int tiler_free(struct tiler_block_info *blk)
 static SSPtr tiler_map(struct tiler_block_info *blk)
 {
     dump_block(blk, "=(tm)=>", "");
-    if (blk->fmt == PIXEL_FMT_PAGE)
-    {
-        blk->ssptr = TilerMgr_Map(blk->ptr, blk->dim.len);
-    }
-    else
-    {
-        blk->ssptr = 0;
-    }
+    R_I(ioctl(td, TILIOC_MBUF, blk));
     return R_UP(blk->ssptr);
 }
 
@@ -490,14 +456,7 @@ static SSPtr tiler_map(struct tiler_block_info *blk)
  */
 static int tiler_unmap(struct tiler_block_info *blk)
 {
-    if (blk->fmt == PIXEL_FMT_PAGE)
-    {
-        return TilerMgr_Unmap(blk->ssptr);
-    }
-    else
-    {
-        return MEMMGR_ERR_GENERIC;
-    }
+    return ioctl(td, TILIOC_UMBUF, blk);
 }
 
 /**
@@ -748,7 +707,7 @@ void *MemMgr_Alloc(MemAllocBlock blocks[], int num_blocks)
     for (ix = 0; ix < num_blocks; ix++)
     {
         CHK_I(blks[ix].ptr,==,NULL);
-        if (NOT_I(tiler_alloc(blks + ix),>,0)) goto FAIL_ALLOC;
+        if (NOT_I(tiler_alloc(blks + ix),>=,0)) goto FAIL_ALLOC;
     }
 
     bufPtr = tiler_mmap(blks, num_blocks, BUF_ALLOCED);
@@ -1044,10 +1003,10 @@ SSPtr TilerMem_VirtToPhys(void *ptr)
     SSPtr ssptr = 0;
     if(!NOT_I(inc_ref(),==,0))
     {
-        ssptr = TilerMgr_VirtToPhys(ptr);
+        ssptr = ioctl(td, TILIOC_GSSP, (unsigned long) ptr);
         A_I(dec_ref(),==,0);
     }
-    return R_P(ssptr);
+    return (SSPtr)R_P(ssptr);
 #else
     return (SSPtr)ptr;
 #endif
