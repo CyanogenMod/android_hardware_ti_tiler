@@ -34,12 +34,12 @@ extern int __internal__TestLib_DoList(int id);
 
 /**
  * Prints test result and returns summary result
- * 
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param res    Test result
- * 
- * @return TEST_RESULT_OK on success, TEST_RESULT_FAIL on 
+ *
+ * @return TEST_RESULT_OK on success, TEST_RESULT_FAIL on
  *         failure, TEST_RESULT_UNAVAILABLE if test is not
  *         available
  */
