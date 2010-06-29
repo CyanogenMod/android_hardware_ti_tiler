@@ -42,7 +42,7 @@
 #define FALSE 0
 #define TESTERR_NOTIMPLEMENTED -65378
 
-#define MAX_ALLOCS 10
+#define MAX_ALLOCS 512
 
 #define TESTS\
     T(alloc_1D_test(4096, 0))\
@@ -864,7 +864,7 @@ int maxalloc_1D_test(bytes_t length, int max_allocs)
     mem = NEWN(struct data, max_allocs);
     void *ptr = (void *)mem;
     int ix, res = 0;
-    for (ix = 0; ptr && ix < max_allocs; ix++)
+    for (ix = 0; ptr && ix < max_allocs;)
     {
         uint16_t val = (uint16_t) rand();
         ptr = alloc_1D(length, 0, val);
@@ -872,6 +872,7 @@ int maxalloc_1D_test(bytes_t length, int max_allocs)
         {
             mem[ix].val = val;
             mem[ix].bufPtr = ptr;
+            ix++;
         }
     }
 
@@ -910,7 +911,7 @@ int maxalloc_2D_test(pixels_t width, pixels_t height, pixel_fmt_t fmt, int max_a
     mem = NEWN(struct data, max_allocs);
     void *ptr = (void *)mem;
     int ix, res = 0;
-    for (ix = 0; ptr && ix < max_allocs; ix++)
+    for (ix = 0; ptr && ix < max_allocs;)
     {
         uint16_t val = (uint16_t) rand();
         ptr = alloc_2D(width, height, fmt, 0, val);
@@ -918,6 +919,7 @@ int maxalloc_2D_test(pixels_t width, pixels_t height, pixel_fmt_t fmt, int max_a
         {
             mem[ix].val = val;
             mem[ix].bufPtr = ptr;
+            ix++;
         }
     }
 
@@ -955,7 +957,7 @@ int maxalloc_NV12_test(pixels_t width, pixels_t height, int max_allocs)
     mem = NEWN(struct data, max_allocs);
     void *ptr = (void *)mem;
     int ix, res = 0;
-    for (ix = 0; ptr && ix < max_allocs; ix++)
+    for (ix = 0; ptr && ix < max_allocs;)
     {
         uint16_t val = (uint16_t) rand();
         ptr = alloc_NV12(width, height, val);
@@ -963,6 +965,7 @@ int maxalloc_NV12_test(pixels_t width, pixels_t height, int max_allocs)
         {
             mem[ix].val = val;
             mem[ix].bufPtr = ptr;
+            ix++;
         }
     }
 
@@ -1001,7 +1004,7 @@ int maxmap_1D_test(bytes_t length, int max_maps)
     mem = NEWN(struct data, max_maps);
     void *ptr = (void *)mem;
     int ix, res = 0;
-    for (ix = 0; ptr && ix < max_maps; ix++)
+    for (ix = 0; ptr && ix < max_maps;)
     {
         /* allocate aligned buffer */
         void *ptr = malloc(length + PAGE_SIZE - 1);
@@ -1017,6 +1020,7 @@ int maxmap_1D_test(bytes_t length, int max_maps)
                 mem[ix].bufPtr = ptr;
                 mem[ix].buffer = buffer;
                 mem[ix].dataPtr = dataPtr;
+                ix++;
             }
             else
             {
