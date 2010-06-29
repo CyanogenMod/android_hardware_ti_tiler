@@ -34,14 +34,15 @@
 #define TILER_MAX_NUM_BLOCKS 16
 
 enum tiler_fmt {
-	TILFMT_MIN     = -1,
-	TILFMT_INVALID = -1,
-	TILFMT_NONE    = 0,
-	TILFMT_8BIT    = 1,
-	TILFMT_16BIT   = 2,
-	TILFMT_32BIT   = 3,
-	TILFMT_PAGE    = 4,
-	TILFMT_MAX     = 4
+	TILFMT_MIN     = -2,
+	TILFMT_INVALID = -2,
+	TILFMT_NONE    = -1,
+	TILFMT_8BIT    = 0,
+	TILFMT_16BIT   = 1,
+	TILFMT_32BIT   = 2,
+	TILFMT_PAGE    = 3,
+	TILFMT_MAX     = 3,
+	TILFMT_8AND16  = 4,
 };
 
 struct area {
@@ -57,23 +58,32 @@ struct tiler_block_info {
 	} dim;
 	uint32_t stride;
 	void *ptr;
+	uint32_t id;
+	uint32_t key;
+	uint32_t group_id;
+	/* alignment requirements for ssptr: ssptr & (align - 1) == offs */
+	uint32_t align;
+	uint32_t offs;
 	uint32_t ssptr;
 };
 
 struct tiler_buf_info {
-	int32_t num_blocks;
+	uint32_t num_blocks;
 	struct tiler_block_info blocks[TILER_MAX_NUM_BLOCKS];
-	int32_t offset;
+	uint32_t offset;
+	uint32_t length;
 };
 
-#define TILIOC_GBUF  _IOWR('z', 100, uint32_t)
-#define TILIOC_FBUF  _IOWR('z', 101, uint32_t)
+#define TILIOC_GBLK  _IOWR('z', 100, struct tiler_block_info)
+#define TILIOC_FBLK   _IOW('z', 101, struct tiler_block_info)
 #define TILIOC_GSSP  _IOWR('z', 102, uint32_t)
-#define TILIOC_MBUF  _IOWR('z', 103, uint32_t)
-#define TILIOC_UMBUF _IOWR('z', 104, uint32_t)
-#define TILIOC_QBUF  _IOWR('z', 105, uint32_t)
-#define TILIOC_RBUF  _IOWR('z', 106, uint32_t)
-#define TILIOC_URBUF _IOWR('z', 107, uint32_t)
-#define TILIOC_QUERY_BLK _IOWR('z', 108, uint32_t)
+#define TILIOC_MBLK  _IOWR('z', 103, struct tiler_block_info)
+#define TILIOC_UMBLK  _IOW('z', 104, struct tiler_block_info)
+#define TILIOC_QBUF  _IOWR('z', 105, struct tiler_buf_info)
+#define TILIOC_RBUF  _IOWR('z', 106, struct tiler_buf_info)
+#define TILIOC_URBUF  _IOW('z', 107, struct tiler_buf_info)
+#define TILIOC_QBLK  _IOWR('z', 108, struct tiler_block_info)
+#define TILIOC_PRBLK  _IOW('z', 109, struct tiler_block_info)
+#define TILIOC_URBLK  _IOW('z', 110, uint32_t)
 
 #endif

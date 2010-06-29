@@ -186,7 +186,7 @@ static bytes_t def_size(tiler_block_info *blk)
 {
     return (blk->fmt == PIXEL_FMT_PAGE ?
             blk->dim.len :
-            blk->dim.area.height * def_stride(blk->dim.area.width * def_bpp(blk->fmt)));
+            blk->dim.area.height * def_stride(blk->offs + blk->dim.area.width * def_bpp(blk->fmt)));
 }
 
 /**
@@ -318,19 +318,19 @@ static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
     switch (blk->fmt)
     {
     case TILFMT_PAGE:
-        P("%s [p=%p(0x%x),l=0x%x,s=%d]%s", prefix, blk->ptr, blk->ssptr,
-          blk->dim.len, blk->stride, suffix);
+        P("%s [%d:(%d,%08x), p=%p(0x%x),l=0x%x,s=%d,%d+%d]%s", prefix, blk->group_id, blk->key, blk->id, blk->ptr, blk->ssptr,
+          blk->dim.len, blk->stride, blk->align, blk->offs, suffix);
         break;
     case TILFMT_8BIT:
     case TILFMT_16BIT:
     case TILFMT_32BIT:
-        P("%s [p=%p(0x%x),%d*%d*%d,s=%d]%s", prefix, blk->ptr, blk->ssptr,
+        P("%s [%d:(%d,%08x), p=%p(0x%x),%d*%d*%d,s=%d,%d+%d]%s", prefix, blk->group_id, blk->key, blk->id, blk->ptr, blk->ssptr,
           blk->dim.area.width, blk->dim.area.height, def_bpp(blk->fmt) * 8,
-          blk->stride, suffix);
+          blk->stride, blk->align, blk->offs, suffix);
         break;
     default:
-        P("%s*[p=%p(0x%x),l=0x%x,s=%d,fmt=0x%x]%s", prefix, blk->ptr,
-          blk->ssptr, blk->dim.len, blk->stride, blk->fmt, suffix);
+        P("%s*[%d:(%d,%08x), p=%p(0x%x),l=0x%x,s=%d,%d+%d,fmt=0x%x]%s", prefix, blk->group_id, blk->key, blk->id, blk->ptr,
+          blk->ssptr, blk->dim.len, blk->stride, blk->align, blk->offs, blk->fmt, suffix);
     }
 #endif
 }
@@ -338,7 +338,7 @@ static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
 static void dump_buf(struct tiler_buf_info* buf, char* prefix)
 {
 #if 0
-    P("%sbuf={n=%d,id=0x%x,", prefix, buf->num_blocks, buf->offset);
+    P("%sbuf={n=%d,id=0x%x,len=0x%x", prefix, buf->num_blocks, buf->offset, buf->length);
     int ix = 0;
     for (ix = 0; ix < buf->num_blocks; ix++)
     {
@@ -406,11 +406,7 @@ static SSPtr tiler_alloc(struct tiler_block_info *blk)
 {
     if (0) dump_block(blk, "=(ta)=>", "");
     blk->ptr = NULL;
-    R_I(ioctl(td, TILIOC_GBUF, blk));
-    if (blk->fmt != PIXEL_FMT_PAGE)
-    {
-        blk->stride = def_stride(blk->dim.area.width * def_bpp(blk->fmt));
-    }
+    R_I(ioctl(td, TILIOC_GBLK, blk));
     dump_block(blk, "alloced: ", "");
     return R_UP(blk->ssptr);
 }
@@ -426,7 +422,7 @@ static SSPtr tiler_alloc(struct tiler_block_info *blk)
  */
 static int tiler_free(struct tiler_block_info *blk)
 {
-    return R_I(ioctl(td, TILIOC_FBUF, blk));
+    return R_I(ioctl(td, TILIOC_FBLK, blk));
 }
 
 /**
@@ -441,7 +437,7 @@ static int tiler_free(struct tiler_block_info *blk)
 static SSPtr tiler_map(struct tiler_block_info *blk)
 {
     dump_block(blk, "=(tm)=>", "");
-    R_I(ioctl(td, TILIOC_MBUF, blk));
+    R_I(ioctl(td, TILIOC_MBLK, blk));
     return R_UP(blk->ssptr);
 }
 
@@ -456,7 +452,7 @@ static SSPtr tiler_map(struct tiler_block_info *blk)
  */
 static int tiler_unmap(struct tiler_block_info *blk)
 {
-    return ioctl(td, TILIOC_UMBUF, blk);
+    return ioctl(td, TILIOC_UMBLK, blk);
 }
 
 /**
@@ -1055,7 +1051,7 @@ int __test__MemMgr()
     ret |= NOT_I(def_bpp(PIXEL_FMT_8BIT),==,1);
 
     /* def_size */
-    tiler_block_info blk;
+    tiler_block_info blk = {0};
     blk.fmt = TILFMT_8BIT;
     blk.dim.area.width = PAGE_SIZE * 8 / 10;
     blk.dim.area.height = 10;

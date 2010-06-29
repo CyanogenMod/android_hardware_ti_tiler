@@ -67,7 +67,7 @@ SSPtr TilerMgr_Alloc(enum pixel_fmt_t pixfmt, pixels_t width, pixels_t height)
     block.dim.area.width = width;
     block.dim.area.height = height;
 
-    ret = ioctl(fd, TILIOC_GBUF, (unsigned long)(&block));
+    ret = ioctl(fd, TILIOC_GBLK, (unsigned long)(&block));
     if (ret < 0) {
         TILERMGR_ERROR();
         return 0x0;
@@ -85,7 +85,7 @@ int TilerMgr_Free(SSPtr addr)
 
     block.ssptr = addr;
 
-    ret = ioctl(fd, TILIOC_FBUF, (unsigned long)(&block));
+    ret = ioctl(fd, TILIOC_FBLK, (unsigned long)(&block));
     if (ret < 0) {
         TILERMGR_ERROR();
         return TILERMGR_ERR_GENERIC;
@@ -104,7 +104,7 @@ SSPtr TilerMgr_PageModeAlloc(bytes_t len)
     block.fmt = TILFMT_PAGE;
     block.dim.len = len;
 
-    ret = ioctl(fd, TILIOC_GBUF, (unsigned long)(&block));
+    ret = ioctl(fd, TILIOC_GBLK, (unsigned long)(&block));
     if (ret < 0) {
         TILERMGR_ERROR();
         return 0x0;
@@ -122,7 +122,7 @@ int TilerMgr_PageModeFree(SSPtr addr)
 
     block.ssptr = addr;
 
-    ret = ioctl(fd, TILIOC_FBUF, (unsigned long)(&block));
+    ret = ioctl(fd, TILIOC_FBLK, (unsigned long)(&block));
     if (ret < 0) {
         TILERMGR_ERROR();
         return TILERMGR_ERR_GENERIC;
@@ -156,7 +156,7 @@ SSPtr TilerMgr_Map(void *ptr, bytes_t len)
     block.dim.len = len;
     block.ptr = ptr;
 
-    ret = ioctl(fd, TILIOC_MBUF, (unsigned long)(&block));
+    ret = ioctl(fd, TILIOC_MBLK, (unsigned long)(&block));
     if (ret < 0) {
         TILERMGR_ERROR();
         return 0x0;
@@ -174,7 +174,7 @@ int TilerMgr_Unmap(SSPtr addr)
 
     block.ssptr = addr;
 
-    ret = ioctl(fd, TILIOC_UMBUF, (unsigned long)(&block));
+    ret = ioctl(fd, TILIOC_UMBLK, (unsigned long)(&block));
     if (ret < 0) {
         TILERMGR_ERROR();
         return TILERMGR_ERR_GENERIC;
