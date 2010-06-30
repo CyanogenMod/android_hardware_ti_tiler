@@ -68,9 +68,9 @@ int test_list() {
         struct elem *me;
         struct list *last, *next;
     } head, *inA, *inB, *in, *in_safe;
-    
+
     /* initialization */
-    DLIST_INIT(head);    
+    DLIST_INIT(head);
     int res = NOT_I(DLIST_IS_EMPTY(head),!=,0);
 
     /* add element at beginning of list */
@@ -141,9 +141,9 @@ int test_ezlist() {
         int data;
         struct elem *me, *last, *next;
     } *elA, *elB, head, *el, *el_safe, *in;
-    
+
     /* initialization */
-    DLIST_INIT(head);    
+    DLIST_INIT(head);
     int res = NOT_I(DLIST_IS_EMPTY(head),!=,0);
 
     /* add element at beginning of list */
@@ -209,9 +209,9 @@ int test_dzlist() {
         int data;
         struct elem *last, *next;
     } *elA, *elB, head, *el, *el_safe, *in;
-    
+
     /* initialization */
-    DZLIST_INIT(head);    
+    DZLIST_INIT(head);
     int res = NOT_I(DZLIST_IS_EMPTY(head),!=,0);
 
     /* add element at beginning of list */
@@ -282,9 +282,9 @@ int test_plist() {
         int data;
         struct list *list_data;
     } *elA, *elB, *el, *el_safe;
-    
+
     /* initialization */
-    DLIST_INIT(head);    
+    DLIST_INIT(head);
     int res = NOT_I(DLIST_IS_EMPTY(head),!=,0);
 
     /* add element at beginning of list */
@@ -363,7 +363,7 @@ int test_mlist() {
         } list_data;
     } *elA, *elB, *el, *el_safe;
     struct list head, *in;
-    
+
     /* initialization */
     DLIST_INIT(head);
     int res = NOT_I(DLIST_IS_EMPTY(head),!=,0);

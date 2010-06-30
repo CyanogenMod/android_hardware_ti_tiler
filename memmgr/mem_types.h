@@ -24,22 +24,22 @@
  * Type definitions
  */
 
-/** 
+/**
  * Buffer length in bytes
  */
 typedef uint32_t bytes_t;
 
 /**
  * Length in pixels
- */ 
+ */
 typedef uint16_t pixels_t;
 
 
 /**
- * Pixel format 
- *  
- * Page mode is encoded in the pixel format to handle different 
- * set of buffers uniformly 
+ * Pixel format
+ *
+ * Page mode is encoded in the pixel format to handle different
+ * set of buffers uniformly
  */
 enum pixel_fmt_t {
     PIXEL_FMT_MIN   = 1,
@@ -54,7 +54,7 @@ typedef enum pixel_fmt_t pixel_fmt_t;
 
 /**
  * Ducati Space Virtual Address Pointer
- * 
+ *
  * This is handled as a unsigned long so that no dereferencing
  * is allowed by user space components.
  */
@@ -62,17 +62,17 @@ typedef uint32_t DSPtr;
 
 /**
  * System Space Pointer
- * 
+ *
  * This is handled as a unsigned long so that no dereferencing
  * is allowed by user space components.
  */
 typedef uint32_t SSPtr;
 
 /**
- * Error values 
- *  
- * Page mode is encoded in the pixel format to handle different 
- * set of buffers uniformly 
+ * Error values
+ *
+ * Page mode is encoded in the pixel format to handle different
+ * set of buffers uniformly
  */
 #define MEMMGR_ERR_NONE    0
 #define MEMMGR_ERR_GENERIC 1

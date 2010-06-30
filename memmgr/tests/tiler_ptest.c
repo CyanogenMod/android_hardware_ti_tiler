@@ -44,11 +44,11 @@
 
 /**
  * Returns the default page stride for this block
- * 
+ *
  * @author a0194118 (9/4/2009)
- * 
+ *
  * @param width  Width of 2D container
- * 
+ *
  * @return Stride
  */
 static bytes_t def_stride(pixels_t width)
@@ -58,11 +58,11 @@ static bytes_t def_stride(pixels_t width)
 
 /**
  * Returns the bytes per pixel for the pixel format.
- * 
+ *
  * @author a0194118 (9/4/2009)
- * 
+ *
  * @param pixelFormat   Pixelformat
- * 
+ *
  * @return Bytes per pixel
  */
 static bytes_t def_bpp(pixel_fmt_t pixelFormat)
@@ -119,19 +119,19 @@ static void dump_slot(struct ptr_info* buf, char* prefix)
 
 /**
  * This method fills up a range of memory using a start address
- * and start value.  The method of filling ensures that 
- * accidentally overlapping regions have minimal chances of 
- * matching, even if the same starting value is used.  This is 
- * because the difference between successive values varies as 
- * such.  This series only repeats after 704189 values, so the 
- * probability of a match for a range of at least 2 values is 
+ * and start value.  The method of filling ensures that
+ * accidentally overlapping regions have minimal chances of
+ * matching, even if the same starting value is used.  This is
+ * because the difference between successive values varies as
+ * such.  This series only repeats after 704189 values, so the
+ * probability of a match for a range of at least 2 values is
  * less than 2*10^-11.
- *  
- * V(i + 1) - V(i) = { 1, 2, 3, ..., 65535, 2, 4, 6, 8 ..., 
- * 65534, 3, 6, 9, 12, ..., 4, 8, 12, 16, ... } 
- * 
+ *
+ * V(i + 1) - V(i) = { 1, 2, 3, ..., 65535, 2, 4, 6, 8 ...,
+ * 65534, 3, 6, 9, 12, ..., 4, 8, 12, 16, ... }
+ *
  * @author a0194118 (9/6/2009)
- * 
+ *
  * @param start   start value
  * @param block   pointer to block info strucure
  */
@@ -213,14 +213,14 @@ void fill_mem(uint16_t start, MemAllocBlock *block)
 }
 
 /**
- * This verifies if a range of memory at a given address was 
+ * This verifies if a range of memory at a given address was
  * filled up using the start value.
- * 
+ *
  * @author a0194118 (9/6/2009)
- * 
+ *
  * @param start   start value
  * @param block   pointer to block info strucure
- * 
+ *
  * @return 0 on success, non-0 error value on failure
  */
 int check_mem(uint16_t start, MemAllocBlock *block)
@@ -231,7 +231,7 @@ int check_mem(uint16_t start, MemAllocBlock *block)
     if (block->pixelFormat == PIXEL_FMT_PAGE)
     {
         height = 1;
-        stride = width = block->dim.len;      
+        stride = width = block->dim.len;
     }
     else
     {
@@ -308,23 +308,23 @@ int check_mem(uint16_t start, MemAllocBlock *block)
 
 /**
  * This method allocates a tiled buffer composed of an arbitrary
- * set of tiled blocks. If successful, it checks 
- * that the block information was updated with the pointer to 
- * the block.  Additionally, it verifies the correct return 
- * values for MemMgr_IsMapped, MemMgr_Is1DBlock, 
- * MemMgr_Is2DBlock, MemMgr_GetStride, TilerMem_GetStride.  It 
- * also verifies TilerMem_VirtToPhys using an internally stored 
- * value of the ssptr. If any of these verifications fail, the 
- * buffer is freed.  Otherwise, it is filled using the given 
- * start value. 
- * 
+ * set of tiled blocks. If successful, it checks
+ * that the block information was updated with the pointer to
+ * the block.  Additionally, it verifies the correct return
+ * values for MemMgr_IsMapped, MemMgr_Is1DBlock,
+ * MemMgr_Is2DBlock, MemMgr_GetStride, TilerMem_GetStride.  It
+ * also verifies TilerMem_VirtToPhys using an internally stored
+ * value of the ssptr. If any of these verifications fail, the
+ * buffer is freed.  Otherwise, it is filled using the given
+ * start value.
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param num_blocks  Number of blocks in the buffer
  * @param blocks      Block information
  * @param val         Fill start value
- * @param bufPtr      Pointer to the allocated buffer 
- *  
+ * @param bufPtr      Pointer to the allocated buffer
+ *
  * @return 0 on success, non-0 error value on failure
  */
 void *alloc_buf(int num_blocks, MemAllocBlock blocks[], uint16_t val)
@@ -379,16 +379,16 @@ void *alloc_buf(int num_blocks, MemAllocBlock blocks[], uint16_t val)
 /**
  * This method frees a tiled buffer composed of an arbitrary set
  * of tiled blocks. The given start value is used to verify that
- * the buffer is still correctly filled.  In the event of any 
- * errors, the error value is returned. 
- * 
+ * the buffer is still correctly filled.  In the event of any
+ * errors, the error value is returned.
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param num_blocks  Number of blocks in the buffer
  * @param blocks      Block information
  * @param val         Fill start value
- * @param bufPtr      Pointer to the allocated buffer 
- *  
+ * @param bufPtr      Pointer to the allocated buffer
+ *
  * @return 0 on success, non-0 error value on failure
  */
 int free_buf(int num_blocks, MemAllocBlock blocks[], uint16_t val, void *bufPtr)
@@ -485,18 +485,18 @@ char *parse_num(char *p, int *tgt)
 }
 
 /**
- * Parametric memmgr test.  This is similar to the star test 
- * except the operations are read from the command line: 
- *  
- * [#=]a:w*h*bits[,w*h*bits...] allocates a list of blocks as 
- * buffer # (it frees any previously allocated/mapped buffer 
- * f:# frees a buffer 
- *  
- * 
+ * Parametric memmgr test.  This is similar to the star test
+ * except the operations are read from the command line:
+ *
+ * [#=]a:w*h*bits[,w*h*bits...] allocates a list of blocks as
+ * buffer # (it frees any previously allocated/mapped buffer
+ * f:# frees a buffer
+ *
+ *
  * @author a0194118 (11/4/2009)
- * 
- * @param argc 
- * @param argv 
+ *
+ * @param argc
+ * @param argv
  */
 int param_test(int argc, char **argv)
 {
@@ -601,7 +601,7 @@ int param_test(int argc, char **argv)
                     buf.blocks[n].fmt = (t == 8 ? TILFMT_8BIT :
                                          t == 16 ? TILFMT_16BIT :
                                          t == 32 ? TILFMT_32BIT : TILFMT_INVALID);
-                    if (NOT_I(buf.blocks[n].fmt,!=,TILFMT_INVALID)) break;                    
+                    if (NOT_I(buf.blocks[n].fmt,!=,TILFMT_INVALID)) break;
                 } else { /* 1d block */
                     buf.blocks[n].fmt = TILFMT_PAGE;
                 }
@@ -690,15 +690,15 @@ int param_test(int argc, char **argv)
 }
 
 /**
- * Main test function. Checks arguments for test case ranges, 
- * runs tests and prints usage or test list if required. 
- * 
+ * Main test function. Checks arguments for test case ranges,
+ * runs tests and prints usage or test list if required.
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param argc   Number of arguments
  * @param argv   Arguments
- * 
- * @return -1 on usage or test list, otherwise # of failed 
+ *
+ * @return -1 on usage or test list, otherwise # of failed
  *         tests.
  */
 int main(int argc, char **argv)

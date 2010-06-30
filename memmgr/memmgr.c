@@ -85,7 +85,7 @@ static pthread_mutex_t che_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * Initializes the static structures
- * 
+ *
  * @author a0194118 (9/8/2009)
  */
 static void init()
@@ -98,11 +98,11 @@ static void init()
 }
 
 /**
- * Increases the reference count.  Initialized tiler if this was 
- * the first reference 
- * 
+ * Increases the reference count.  Initialized tiler if this was
+ * the first reference
+ *
  * @author a0194118 (9/2/2009)
- * 
+ *
  * @return 0 on success, non-0 error value on failure.
  */
 static int inc_ref()
@@ -128,17 +128,17 @@ static int inc_ref()
     {
         refCnt--;
     }
-    
+
     pthread_mutex_unlock(&ref_mutex);
     return res;
 }
 
 /**
- * Decreases the reference count.  Deinitialized tiler if this 
- * was the last reference 
- * 
+ * Decreases the reference count.  Deinitialized tiler if this
+ * was the last reference
+ *
  * @author a0194118 (9/2/2009)
- * 
+ *
  * @return 0 on success, non-0 error value on failure.
  */
 static int dec_ref()
@@ -162,11 +162,11 @@ static int dec_ref()
 
 /**
  * Returns the default page stride for this block
- * 
+ *
  * @author a0194118 (9/4/2009)
- * 
+ *
  * @param width  Width of 2D container
- * 
+ *
  * @return Stride
  */
 static bytes_t def_stride(pixels_t width)
@@ -176,11 +176,11 @@ static bytes_t def_stride(pixels_t width)
 
 /**
  * Returns the bytes per pixel for the pixel format.
- * 
+ *
  * @author a0194118 (9/4/2009)
- * 
+ *
  * @param pixelFormat   Pixelformat
- * 
+ *
  * @return Bytes per pixel
  */
 static bytes_t def_bpp(pixel_fmt_t pixelFormat)
@@ -191,12 +191,12 @@ static bytes_t def_bpp(pixel_fmt_t pixelFormat)
 
 /**
  * Returns the size of the supplied block
- * 
+ *
  * @author a0194118 (9/4/2009)
- * 
+ *
  * @param blk    Pointer to the tiler_block_info struct
- * 
- * @return size of the block in bytes 
+ *
+ * @return size of the block in bytes
  */
 static bytes_t def_size(tiler_block_info *blk)
 {
@@ -206,15 +206,15 @@ static bytes_t def_size(tiler_block_info *blk)
 }
 
 /**
- * Records a buffer-pointer -- tiler-ID mapping for a specific 
- * buffer type. 
- * 
+ * Records a buffer-pointer -- tiler-ID mapping for a specific
+ * buffer type.
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param bufPtr    Buffer pointer
  * @param tiler_id  Tiler ID
  * @param buf_type  Buffer type: BUF_ALLOCED or BUF_MAPPED
- * 
+ *
  * @return 0 on success, -ENOMEM on memory allocation failure
  */
 static int buf_cache_add(void *bufPtr, bytes_t size, uint32_t tiler_id,
@@ -236,14 +236,14 @@ static int buf_cache_add(void *bufPtr, bytes_t size, uint32_t tiler_id,
 
 /**
  * Retrieves the tiler ID for given pointer and buffer type from
- * the records.  If the pointer lies within a tracked buffer, 
- * the tiler ID is returned.  Otherwise 0 is returned. 
- * 
+ * the records.  If the pointer lies within a tracked buffer,
+ * the tiler ID is returned.  Otherwise 0 is returned.
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param bufPtr    Buffer pointer
  * @param buf_type  Buffer type: BUF_ALLOCED or BUF_MAPPED
- * 
+ *
  * @return Tiler ID on success, 0 on failure.
  */
 static uint32_t buf_cache_query(void *ptr, int buf_type_mask,
@@ -277,15 +277,15 @@ static uint32_t buf_cache_query(void *ptr, int buf_type_mask,
 }
 
 /**
- * Retrieves the tiler ID for given buffer pointer and buffer 
- * type from the records.  If the tiler ID is found, it is 
- * removed from the records as well. 
- * 
+ * Retrieves the tiler ID for given buffer pointer and buffer
+ * type from the records.  If the tiler ID is found, it is
+ * removed from the records as well.
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param bufPtr    Buffer pointer
  * @param buf_type  Buffer type: BUF_ALLOCED or BUF_MAPPED
- * 
+ *
  * @return Tiler ID on success, 0 on failure.
  */
 static uint32_t buf_cache_del(void *bufPtr, int buf_type)
@@ -306,13 +306,13 @@ static uint32_t buf_cache_del(void *bufPtr, int buf_type)
 }
 
 /**
- * Checks the consistency of the internal record cache.  The 
- * number of elements in the cache should equal to the number of 
- * references. 
- * 
+ * Checks the consistency of the internal record cache.  The
+ * number of elements in the cache should equal to the number of
+ * references.
+ *
  * @author a0194118 (9/7/2009)
- * 
- * @return 0 on success, non-0 error value on failure. 
+ *
+ * @return 0 on success, non-0 error value on failure.
  */
 static int cache_check()
 {
@@ -365,11 +365,11 @@ static void dump_buf(struct tiler_buf_info* buf, char* prefix)
 
 /**
  * Returns the tiler format for an address
- * 
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param ssptr   Address
- * 
+ *
  * @return The tiler format
  */
 static enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
@@ -411,11 +411,11 @@ static enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
 
 /**
  * Allocates a memory block using tiler
- * 
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param blk    Pointer to the block info
- * 
+ *
  * @return ssptr of block allocated, or 0 on error
  */
 static SSPtr tiler_alloc(struct tiler_block_info *blk)
@@ -437,11 +437,11 @@ static SSPtr tiler_alloc(struct tiler_block_info *blk)
 
 /**
  * Frees a memory block using tiler
- * 
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param blk    Pointer to the block info
- * 
+ *
  * @return 0 on success, non-0 error value on failure.
  */
 static int tiler_free(struct tiler_block_info *blk)
@@ -458,11 +458,11 @@ static int tiler_free(struct tiler_block_info *blk)
 
 /**
  * Maps a memory block into tiler using tiler
- * 
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param blk    Pointer to the block info
- * 
+ *
  * @return ssptr of block mapped, or 0 on error
  */
 static SSPtr tiler_map(struct tiler_block_info *blk)
@@ -481,11 +481,11 @@ static SSPtr tiler_map(struct tiler_block_info *blk)
 
 /**
  * Unmaps a memory block from tiler using tiler
- * 
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param blk    Pointer to the block info
- * 
+ *
  * @return 0 on success, non-0 error value on failure.
  */
 static int tiler_unmap(struct tiler_block_info *blk)
@@ -502,12 +502,12 @@ static int tiler_unmap(struct tiler_block_info *blk)
 
 /**
  * Returns the size of a buffer.
- * 
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param blks        Pointer to array of block info structures
  * @param num_blocks  Number of blocks
- * 
+ *
  * @return Size of a resulting buffer
  */
 static bytes_t tiler_size(struct tiler_block_info *blks, int num_blocks)
@@ -522,16 +522,16 @@ static bytes_t tiler_size(struct tiler_block_info *blks, int num_blocks)
 }
 
 /**
- * Registers a buffer structure with tiler, and maps the buffer 
- * into memory using tiler. On success, it writes the tiler ID 
- * of the buffer into the area pointed by tiler ID. 
- * 
+ * Registers a buffer structure with tiler, and maps the buffer
+ * into memory using tiler. On success, it writes the tiler ID
+ * of the buffer into the area pointed by tiler ID.
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param blks        Pointer to array of block info structures
  * @param num_blocks  Number of blocks
  * @param tiler_id      Pointer to tiler ID.
- * 
+ *
  * @return pointer to the mapped buffer.
  */
 static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
@@ -558,7 +558,7 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
     /* save buffer in stub */
     struct tiler_buf_info *buf_c = NEWN(struct tiler_buf_info,2);
     buf.offset = (uint32_t) buf_c;
-#endif        
+#endif
     if (NOT_P(buf.offset,!=,0)) return NULL;
 
     /* map blocks to process space */
@@ -620,18 +620,18 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
 }
 
 /**
- * Checks whether the tiler_block_info is filled in correctly. 
- * Verifies the pixel format, correct length, width and or 
- * height, the length/stride relationship for 1D buffers, and 
- * the correct stride for 2D buffers.  Also verifies block size 
- * to be page sized if desired. 
- * 
+ * Checks whether the tiler_block_info is filled in correctly.
+ * Verifies the pixel format, correct length, width and or
+ * height, the length/stride relationship for 1D buffers, and
+ * the correct stride for 2D buffers.  Also verifies block size
+ * to be page sized if desired.
+ *
  * @author a0194118 (9/4/2009)
- * 
+ *
  * @param blk            Pointer to the tiler_block_info struct
- * @param is_page_sized  Whether the block needs to be page 
+ * @param is_page_sized  Whether the block needs to be page
  *                       sized (fit on whole pages).
- * @return 0 on success, non-0 error value on failure. 
+ * @return 0 on success, non-0 error value on failure.
  */
 static int check_block(tiler_block_info *blk, bool is_page_sized)
 {
@@ -639,7 +639,7 @@ static int check_block(tiler_block_info *blk, bool is_page_sized)
     if (NOT_I(blk->fmt,>=,PIXEL_FMT_MIN) ||
         NOT_I(blk->fmt,<=,PIXEL_FMT_MAX)) return MEMMGR_ERR_GENERIC;
 
-    
+
     if (blk->fmt == PIXEL_FMT_PAGE)
     {   /* check 1D buffers */
 
@@ -648,9 +648,9 @@ static int check_block(tiler_block_info *blk, bool is_page_sized)
             (blk->stride && NOT_I(blk->dim.len % blk->stride,==,0)))
             return MEMMGR_ERR_GENERIC;
     }
-    else 
+    else
     {   /* check 2D buffers */
-   
+
         /* check width, height and stride (must be the default stride or 0) */
         bytes_t stride = def_stride(blk->dim.area.width * def_bpp(blk->fmt));
         if (NOT_I(blk->dim.area.width,>,0) ||
@@ -666,19 +666,19 @@ static int check_block(tiler_block_info *blk, bool is_page_sized)
 }
 
 /**
- * Checks whether the block information is correct for map and 
- * alloc operations.  Checks the number of blocks, and validity 
- * of each block.  Warns if reserved member is not 0. 
- * 
+ * Checks whether the block information is correct for map and
+ * alloc operations.  Checks the number of blocks, and validity
+ * of each block.  Warns if reserved member is not 0.
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param blks                 Pointer to the block info array.
  * @param num_blocks           Number of blocks.
- * @param num_pagesize_blocks  Number of blocks that must be 
+ * @param num_pagesize_blocks  Number of blocks that must be
  *                             page sized (these must be in
  *                             front)
- * 
- * @return 0 on success, non-0 error value on failure. 
+ *
+ * @return 0 on success, non-0 error value on failure.
  */
 static int check_blocks(struct tiler_block_info *blks, int num_blocks,
                  int num_pagesize_blocks)
@@ -705,11 +705,11 @@ static int check_blocks(struct tiler_block_info *blks, int num_blocks,
 }
 
 /**
- * Resets the ptr and reserved fields of the block info 
- * structures. 
- * 
+ * Resets the ptr and reserved fields of the block info
+ * structures.
+ *
  * @author a0194118 (9/7/2009)
- * 
+ *
  * @param blks                 Pointer to the block info array.
  * @param num_blocks           Number of blocks.
  */
@@ -753,7 +753,7 @@ void *MemMgr_Alloc(MemAllocBlock blocks[], int num_blocks)
 
     bufPtr = tiler_mmap(blks, num_blocks, BUF_ALLOCED);
     if (A_P(bufPtr,!=,0)) goto DONE;
-    
+
     /* ------ error handling ------ */
 FAIL_ALLOC:
     while (ix)
@@ -797,7 +797,7 @@ int MemMgr_Free(void *bufPtr)
             dump_buf(&buf, "==(URBUF)=>");
             ret = A_I(ioctl(td, TILIOC_URBUF, &buf),==,0);
             dump_buf(&buf, "<=(URBUF)==");
-    
+
             /* free each block */
             int ix;
             for (ix = 0; ix < buf.num_blocks; ix++)
@@ -902,7 +902,7 @@ int MemMgr_UnMap(void *bufPtr)
             dump_buf(&buf, "==(URBUF)=>");
             ret = A_I(ioctl(td, TILIOC_URBUF, &buf),==,0);
             dump_buf(&buf, "<=(URBUF)==");
-    
+
             /* unmap each block */
             int ix;
             for (ix = 0; ix < buf.num_blocks; ix++)
@@ -977,7 +977,7 @@ bytes_t MemMgr_GetStride(void *ptr)
         int ix, ret = A_I(ioctl(td, TILIOC_QBUF, &buf),==,0);
         dump_buf(&buf, "<=(QBUF)==");
         if (ret) return 0;
-        
+
         /* walk through block to determine which stride we need */
         for (ix = 0; ix < buf.num_blocks; ix++)
         {
@@ -1013,7 +1013,7 @@ bytes_t MemMgr_GetStride(void *ptr)
         {
             if (ptr >= buf->blocks[ix].ptr &&
                 ptr < buf->blocks[ix].ptr + def_size(buf->blocks + ix))
-            {    
+            {
                 bytes_t stride = buf->blocks[ix].stride;
                 pthread_mutex_unlock(&che_mutex);
                 return R_UP(stride);
@@ -1054,12 +1054,12 @@ SSPtr TilerMem_VirtToPhys(void *ptr)
 }
 
 /**
- * Internal Unit Test.  Tests the static methods of this 
- * library.  Assumes an unitialized state as well. 
- * 
- * @author a0194118 (9/4/2009) 
- *  
- * @return 0 for success, non-0 error value for failure. 
+ * Internal Unit Test.  Tests the static methods of this
+ * library.  Assumes an unitialized state as well.
+ *
+ * @author a0194118 (9/4/2009)
+ *
+ * @return 0 for success, non-0 error value for failure.
  */
 int __test__MemMgr()
 {
