@@ -77,12 +77,6 @@ struct MemAllocBlock {
     uint32_t stride;    /* must be multiple of page size.  Can be 0 only
                            if pixelFormat is PIXEL_FMT_PAGE. */
     void    *ptr;       /* pointer to beginning of buffer */
-    uint32_t id;        /* buffer ID - received at allocation */
-    uint32_t key;       /* buffer key - given at allocation */
-    uint32_t group_id;  /* group ID */
-    /* alignment requirements for ssptr: ssptr & (align - 1) == offs */
-    uint32_t align;     /* block alignment */
-    uint32_t offs;      /* block offset */
     uint32_t reserved;  /* system space address (used internally) */
 };
 
