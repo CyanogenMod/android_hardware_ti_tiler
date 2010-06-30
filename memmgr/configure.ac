@@ -67,7 +67,7 @@ AC_DEFINE([STUB_TILER],[1],[Use tiler stub])
 fi
 
 # Project build flags
-MEMMGR_CFLAGS="-Werror -pipe -ansi"
+MEMMGR_CFLAGS="-Werror -Wall -pipe -ansi"
 AC_SUBST(MEMMGR_CFLAGS)
 
 AC_CONFIG_FILES([libmemmgr.pc Makefile tests/Makefile])
