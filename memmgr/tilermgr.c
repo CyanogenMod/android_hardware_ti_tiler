@@ -55,7 +55,7 @@ SSPtr TilerMgr_Alloc(enum pixel_fmt_t pixfmt, pixels_t width, pixels_t height)
 {
     int ret = -1;
     struct tiler_block_info block = {0};
-    
+
     if (pixfmt < PIXEL_FMT_8BIT || pixfmt > PIXEL_FMT_32BIT)
         return 0x0;
     if (width <= 0 || width > TILER_WIDTH * 64)
@@ -135,7 +135,7 @@ SSPtr TilerMgr_VirtToPhys(void *ptr)
     int ret = -1;
     unsigned long tmp = 0x0;
 
-    if(ptr == NULL) 
+    if(ptr == NULL)
         return 0x0;
 
     tmp = (unsigned long)ptr;
