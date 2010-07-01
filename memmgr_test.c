@@ -39,6 +39,11 @@
 #include <tilermem_utils.h>
 #include <testlib.h>
 
+/* for star_tiler_test */
+#include <fcntl.h>     /* open() */
+#include <unistd.h>    /* close() */
+#include <sys/ioctl.h> /* ioctl() */
+
 #define FALSE 0
 #define TESTERR_NOTIMPLEMENTED -65378
 
@@ -1242,7 +1247,6 @@ int star_test(uint32_t num_ops, uint16_t num_slots)
     return res;
 }
 
-#include <tilermgr.h>
 /**
  * This stress tests allocates/maps/frees/unmaps buffers at
  * least num_ops times.  The test maintains a set of slots that
@@ -1272,9 +1276,8 @@ int star_tiler_test(uint32_t num_ops, uint16_t num_slots)
     srand(0x4B72316A);
     struct data {
         int      op;
-        SSPtr    ssptr;
+        struct tiler_block_info blk;
         void    *buffer;
-        void    *dataPtr;
     } *mem;
 
     /* allocate memory state */
@@ -1282,26 +1285,16 @@ int star_tiler_test(uint32_t num_ops, uint16_t num_slots)
     if (!mem) return NOT_P(mem,!=,NULL);
 
     /* perform alloc/free/unmaps */
-    int ix, res = TilerMgr_Open();
+    int ix, td, res = td = A_S(open("/dev/tiler", O_RDWR),==,0);
     while (!res && num_ops--)
     {
         ix = rand() % num_slots;
         /* see if we need to free/unmap data */
-        if (mem[ix].ssptr)
+        if (mem[ix].blk.id)
         {
-            switch (mem[ix].op)
-            {
-            case 0: /*
-            res = unmap_1D(mem[ix].dataPtr, mem[ix].length, 0, mem[ix].val, mem[ix].bufPtr); */
-                FREE(mem[ix].buffer);
-                break;
-            case 1:
-                P("free [0x%x]", mem[ix].ssptr);
-                res = TilerMgr_PageModeFree(mem[ix].ssptr); break;
-            case 2: case 3: case 4:
-                P("free [0x%x]", mem[ix].ssptr);
-                res = TilerMgr_Free(mem[ix].ssptr); break;
-            }
+            P("free [0x%x(0x%x)]", mem[ix].blk.id, mem[ix].blk.ssptr);
+            res = A_S(ioctl(td, TILIOC_FBLK, &mem[ix].blk),==,0);
+            FREE(mem[ix].buffer);
             ZERO(mem[ix]);
         }
         /* we need to allocate/map data */
@@ -1325,36 +1318,32 @@ int star_tiler_test(uint32_t num_ops, uint16_t num_slots)
             switch (mem[ix].op)
             {
             case 0: /* map 1D buffer */
-#if 0  /* TODO: we need to fix unmap_1D first */
                 /* allocate aligned buffer */
                 length = (length + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1);
                 mem[ix].buffer = malloc(length + PAGE_SIZE - 1);
                 if (mem[ix].buffer)
                 {
-                    mem[ix].dataPtr = (void *)(((uint32_t)mem[ix].buffer + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1));
-                    mem[ix].ssptr = TilerMgr_Map(mem[ix].dataPtr, length);
-                    if (!mem[ix].ssptr) FREE(mem[ix].buffer);
+                    mem[ix].blk.dim.len = length;
+                    mem[ix].blk.fmt = TILFMT_PAGE;
+                    mem[ix].blk.ptr = (void *)(((uint32_t)mem[ix].buffer + PAGE_SIZE - 1) &~ (PAGE_SIZE - 1));
+                    res = A_S(ioctl(td, TILIOC_MBLK, &mem[ix].blk),==,0);
+                    if (res)
+                        FREE(mem[ix].buffer);
                 }
-                P("map[l=0x%x] = 0x%x", length, mem[ix].ssptr);
+                P("map[l=0x%x] = 0x%x(0x%x)", length, mem[ix].blk.id, mem[ix].blk.ssptr);
                 break;
-#else
-                mem[ix].op = 1;
-#endif
             case 1:
-                mem[ix].ssptr = TilerMgr_PageModeAlloc(length);
-                P("alloc[l=0x%x] = 0x%x", length, mem[ix].ssptr);
+                mem[ix].blk.dim.len = length;
+                mem[ix].blk.fmt = TILFMT_PAGE;
+                res = A_S(ioctl(td, TILIOC_GBLK, &mem[ix].blk),==,0);
+                P("alloc[l=0x%x] = 0x%x(0x%x)", length, mem[ix].blk.id, mem[ix].blk.ssptr);
                 break;
-            case 2:
-                mem[ix].ssptr = TilerMgr_Alloc(PIXEL_FMT_8BIT, width, height);
-                P("alloc[%d*%d*8] = 0x%x", width, height, mem[ix].ssptr);
-                break;
-            case 3:
-                mem[ix].ssptr = TilerMgr_Alloc(PIXEL_FMT_16BIT, width, height);
-                P("alloc[%d*%d*16] = 0x%x", width, height, mem[ix].ssptr);
-                break;
-            case 4:
-                mem[ix].ssptr = TilerMgr_Alloc(PIXEL_FMT_32BIT, width, height);
-                P("alloc[%d*%d*32] = 0x%x", width, height, mem[ix].ssptr);
+            case 2: case 3: case 4:
+                mem[ix].blk.dim.area.width = width;
+                mem[ix].blk.dim.area.height = height;
+                mem[ix].blk.fmt = TILFMT_8BIT + mem[ix].op - 2;
+                res = A_S(ioctl(td, TILIOC_GBLK, &mem[ix].blk),==,0);
+                P("alloc[%d*%d*%d] = 0x%x(0x%x)", width, height, 8 << (mem[ix].op -2), mem[ix].blk.id, mem[ix].blk.ssptr);
                 break;
             }
         }
@@ -1363,20 +1352,13 @@ int star_tiler_test(uint32_t num_ops, uint16_t num_slots)
     /* unmap and free everything */
     for (ix = 0; ix < num_slots; ix++)
     {
-        if (mem[ix].ssptr)
+        if (mem[ix].blk.id)
         {
-            /* check memory fill */
-            switch (mem[ix].op)
-            {
-            case 0: /* ERR_ADD(res, unmap_1D(mem[ix].dataPtr, mem[ix].length, 0, mem[ix].val, mem[ix].bufPtr)); */
-                FREE(mem[ix].buffer);
-                break;
-            case 1: ERR_ADD(res, TilerMgr_PageModeFree(mem[ix].ssptr)); break;
-            default: ERR_ADD(res, TilerMgr_Free(mem[ix].ssptr)); break;
-            }
+            res = A_S(ioctl(td, TILIOC_FBLK, &mem[ix].blk),==,0);
+            FREE(mem[ix].buffer);
         }
     }
-    ERR_ADD(res, TilerMgr_Close());
+    ERR_ADD_S(res, close(td));
     FREE(mem);
 
     return res;
