@@ -154,13 +154,39 @@
 #define NOT_L(exp,cmp,val) NOT(exp,cmp,val,long,"%ld")
 #define NOT_P(exp,cmp,val) NOT(exp,cmp,val,void *,"%p")
 
+
+/* system assertions - will use perror to give external error information */
+#ifdef __DEBUG_ASSERT__
+#define ERR_S(fmt, ...) S_ { fprintf(stderr, fmt " at %s(" __FILE__ ":%d", ##__VA_ARGS__, __FUNCTION__, __LINE__); perror(")"); fflush(stderr); } _S
+#define A_S(exp,cmp,val) E_ { \
+    int __exp__ = (int) (exp); int __val__ = (int) (val); \
+    if (!(__exp__ cmp __val__)) ERR_S("assert: %s (=%d) !" #cmp " %d", #exp, __exp__, __val__); \
+    __exp__; \
+} _E
+#define CHK_S(exp,cmp,val) S_ { \
+    int __exp__ = (int) (exp); int __val__ = (int) (val); \
+    if (!(__exp__ cmp __val__)) ERR_S("assert: %s (=%d) !" #cmp " %d", #exp, __exp__, __val__); \
+} _S
+#define NOT_S(exp,cmp,val) E_ { \
+    int __exp__ = (int) (exp); int __val__ = (int) (val); \
+    if (!(__exp__ cmp __val__)) ERR_S("assert: %s (=%d) !" #cmp " %d", #exp, __exp__, __val__); \
+    !(__exp__ cmp __val__); \
+} _E
+#else
+#define A_S(exp,cmp,val) (exp)
+#define CHK_S(exp,cmp,val)
+#define NOT_S(exp,cmp,val) (!((exp) cmp (val)))
+#endif
+
 /* error propagation macros - these macros ensure evaluation of the expression
    even if there was a prior error */
 
 /* new error is accumulated into error */
 #define ERR_ADD(err, exp) S_ { int __error__ = A_I(exp,==,0); err = err ? err : __error__; } _S
+#define ERR_ADD_S(err, exp) S_ { int __error__ = A_S(exp,==,0); err = err ? err : __error__; } _S
 /* new error overwrites old error */
 #define ERR_OVW(err, exp) S_ { int __error__ = A_I(exp,==,0); err = __error__ ? __error__ : err; } _S
+#define ERR_OVW_S(err, exp) S_ { int __error__ = A_S(exp,==,0); err = __error__ ? __error__ : err; } _S
 
 #endif
 
