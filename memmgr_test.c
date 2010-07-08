@@ -1285,7 +1285,7 @@ int star_tiler_test(uint32_t num_ops, uint16_t num_slots)
     if (!mem) return NOT_P(mem,!=,NULL);
 
     /* perform alloc/free/unmaps */
-    int ix, td = A_S(open("/dev/tiler", O_RDWR),==,0), res = td < 0 ? td : 0;
+    int ix, td = A_S(open("/dev/tiler", O_RDWR),>=,0), res = td < 0 ? td : 0;
     while (!res && num_ops--)
     {
         ix = rand() % num_slots;

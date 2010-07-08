@@ -290,7 +290,6 @@ static void buf_cache_del(void *bufPtr, struct tiler_buf_info *buf,
             DLIST_REMOVE(ad->link);
             FREE(ad);
             pthread_mutex_unlock(&che_mutex);
-            P("offset(0x%x)", buf->offset);
             return;
         }
     }
@@ -594,12 +593,8 @@ static int check_block(tiler_block_info *blk, bool is_page_sized)
         NOT_I(blk->offs,<,PAGE_SIZE))
         return MEMMGR_ERR_GENERIC;
 
-    /* set minimum alignment */
-    if (!blk->align)
-        for (blk->align = 1; blk->align < blk->offs; blk->align <<= 1);
-
     /* check the offset */
-    if (NOT_I(blk->offs,<,blk->align))
+    if (blk->offs && blk->align && NOT_I(blk->offs,<,blk->align))
         return MEMMGR_ERR_GENERIC;
 
     if (blk->fmt == PIXEL_FMT_PAGE)
@@ -665,16 +660,27 @@ static int check_blocks(struct tiler_block_info *blks, int num_blocks,
         /* check alignment */
         if (!ret)
         {
+            /* set minimum alignment if none specified */
+            if (!blk->align && blk->offs)
+                while(align < blk->offs)
+                    align <<= 1;
+
             /* offsets must be the same up to the smaller alignment */
-            if ((blk->offs ^ offset) & (align - 1) & (blk->align - 1))
+            if ((offset || align) &&
+                ((blk->offs ^ offset) & (align - 1) & (blk->align - 1)))
             {
                 P("Incompatible offset: %x/%x & %x/%x\n", blk->offs, blk->align,
                   offset, align);
-                ret = -EINVAL;
-            } else if (blk->align > align) {
-                /* update offset if alignment increases */
-                offset = blk->offs;
-                align = blk->align;
+                ret = MEMMGR_ERR_GENERIC;
+            }
+            else
+            {
+                /* update offset if alignment increases (offset cannot
+                   decrease) */
+                if (blk->align > align)
+                    align = blk->align;
+                if (blk->offs > offset)
+                    offset = blk->offs;
             }
         }
         if (ret)
