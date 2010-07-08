@@ -167,9 +167,9 @@ extern int __test__MemMgr();
  *
  * @return Stride
  */
-static bytes_t def_stride(pixels_t width)
+static bytes_t def_stride(bytes_t width)
 {
-    return (PAGE_SIZE - 1 + (bytes_t)width) & ~(PAGE_SIZE - 1);
+    return ROUND_UP_TO2POW(width, PAGE_SIZE);
 }
 
 /**
@@ -1012,7 +1012,7 @@ int maxmap_1D_test(bytes_t length, int max_maps)
     for (ix = 0; ptr && ix < max_maps;)
     {
         /* allocate aligned buffer */
-        void *ptr = malloc(length + PAGE_SIZE - 1);
+        ptr = malloc(length + PAGE_SIZE - 1);
         if (ptr)
         {
             void *buffer = ptr;
@@ -1285,7 +1285,7 @@ int star_tiler_test(uint32_t num_ops, uint16_t num_slots)
     if (!mem) return NOT_P(mem,!=,NULL);
 
     /* perform alloc/free/unmaps */
-    int ix, td, res = td = A_S(open("/dev/tiler", O_RDWR),==,0);
+    int ix, td = A_S(open("/dev/tiler", O_RDWR),==,0), res = td < 0 ? td : 0;
     while (!res && num_ops--)
     {
         ix = rand() % num_slots;
