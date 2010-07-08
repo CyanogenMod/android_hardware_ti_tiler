@@ -188,6 +188,21 @@ static bytes_t def_size(tiler_block_info *blk)
 }
 
 /**
+ * Returns the map size based on an offset and buffer size
+ *
+ * @author a0194118 (7/8/2010)
+ *
+ * @param size   Size of buffer
+ * @param offs   Buffer offset
+ *
+ * @return (page aligned) size for mapping
+ */
+static bytes_t map_size(bytes_t size, bytes_t offs)
+{
+    return def_stride(size + (offs & (PAGE_SIZE - 1)));
+}
+
+/**
  * Records a buffer-pointer -- tiler-ID mapping for a specific
  * buffer type.
  *
@@ -495,8 +510,9 @@ static void *tiler_mmap(struct tiler_block_info *blks, int num_blocks,
 
     /* map blocks to process space */
 #ifndef STUB_TILER
-    void *bufPtr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                        td, buf.offset);
+    void *bufPtr = mmap(0, map_size(size, buf.offset),
+                        PROT_READ | PROT_WRITE, MAP_SHARED,
+                        td, buf.offset & ~(PAGE_SIZE - 1));
     if (bufPtr == MAP_FAILED){
         bufPtr = NULL;
     } else {
@@ -734,7 +750,7 @@ int MemMgr_Free(void *bufPtr)
 
         /* unmap buffer */
         bufPtr = (void *)((uint32_t)bufPtr & ~(PAGE_SIZE - 1));
-        ERR_ADD(ret, munmap(bufPtr, buf.length));
+        ERR_ADD(ret, munmap(bufPtr, map_size(buf.length, buf.offset)));
 #else
         void *ptr = (void *) buf.offset;
         FREE(ptr);
@@ -828,7 +844,7 @@ int MemMgr_UnMap(void *bufPtr)
 
         /* unmap buffer */
         bufPtr = (void *)((uint32_t)bufPtr & ~(PAGE_SIZE - 1));
-        ERR_ADD(ret, munmap(bufPtr, buf.length));
+        ERR_ADD(ret, munmap(bufPtr, map_size(buf.length, buf.offset)));
 #else
         struct tiler_buf_info *ptr = (struct tiler_buf_info *) buf.offset;
         FREE(ptr[1].blocks[0].ptr);
