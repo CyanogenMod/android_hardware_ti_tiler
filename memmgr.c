@@ -259,7 +259,6 @@ static void buf_cache_query(void *ptr, struct tiler_buf_info *buf,
             ad->buf.blocks->ptr <= ptr && ptr < ad->buf.blocks->ptr + ad->buf.length) {
             memcpy(buf, &ad->buf, sizeof(*buf));
             pthread_mutex_unlock(&che_mutex);
-            P("offset(0x%x)", buf->offset);
             return;
         }
     }
@@ -325,7 +324,7 @@ static int cache_check()
 
 static void dump_block(struct tiler_block_info *blk, char *prefix, char *suffix)
 {
-#if 1
+#if 0
     switch (blk->fmt)
     {
     case TILFMT_PAGE:
@@ -416,7 +415,7 @@ static enum tiler_fmt tiler_get_fmt(SSPtr ssptr)
  */
 static int tiler_alloc(struct tiler_block_info *blk)
 {
-    if (0) dump_block(blk, "=(ta)=>", "");
+    dump_block(blk, "=(ta)=>", "");
     blk->ptr = NULL;
     int ret = A_S(ioctl(td, TILIOC_GBLK, blk),==,0);
     dump_block(blk, "alloced: ", "");
@@ -589,6 +588,19 @@ static int check_block(tiler_block_info *blk, bool is_page_sized)
     if (NOT_I(blk->fmt,>=,PIXEL_FMT_MIN) ||
         NOT_I(blk->fmt,<=,PIXEL_FMT_MAX)) return MEMMGR_ERR_GENERIC;
 
+    /* check alignment */
+    if (NOT_I(blk->align & (blk->align - 1),==,0) ||
+        NOT_I(blk->align,<=,PAGE_SIZE) ||
+        NOT_I(blk->offs,<,PAGE_SIZE))
+        return MEMMGR_ERR_GENERIC;
+
+    /* set minimum alignment */
+    if (!blk->align)
+        for (blk->align = 1; blk->align < blk->offs; blk->align <<= 1);
+
+    /* check the offset */
+    if (NOT_I(blk->offs,<,blk->align))
+        return MEMMGR_ERR_GENERIC;
 
     if (blk->fmt == PIXEL_FMT_PAGE)
     {   /* check 1D buffers */
@@ -618,7 +630,9 @@ static int check_block(tiler_block_info *blk, bool is_page_sized)
 /**
  * Checks whether the block information is correct for map and
  * alloc operations.  Checks the number of blocks, and validity
- * of each block.  Warns if reserved member is not 0.
+ * of each block.  Warns if reserved member is not 0.  Also
+ * checks if the alignment/offset requirements are consistent
+ * across the buffer
  *
  * @author a0194118 (9/7/2009)
  *
@@ -633,6 +647,8 @@ static int check_block(tiler_block_info *blk, bool is_page_sized)
 static int check_blocks(struct tiler_block_info *blks, int num_blocks,
                  int num_pagesize_blocks)
 {
+    uint32_t align = 0, offset = 0;
+
     /* check arguments */
     if (NOT_I(num_blocks,>,0) ||
         NOT_I(num_blocks,<=,TILER_MAX_NUM_BLOCKS)) return MEMMGR_ERR_GENERIC;
@@ -645,13 +661,34 @@ static int check_blocks(struct tiler_block_info *blks, int num_blocks,
         CHK_I(blk->ssptr,==,0);
         CHK_I(blk->id,==,0);
         int ret = check_block(blk, ix < num_pagesize_blocks);
+
+        /* check alignment */
+        if (!ret)
+        {
+            /* offsets must be the same up to the smaller alignment */
+            if ((blk->offs ^ offset) & (align - 1) & (blk->align - 1))
+            {
+                P("Incompatible offset: %x/%x & %x/%x\n", blk->offs, blk->align,
+                  offset, align);
+                ret = -EINVAL;
+            } else if (blk->align > align) {
+                /* update offset if alignment increases */
+                offset = blk->offs;
+                align = blk->align;
+            }
+        }
         if (ret)
         {
             DP("for block[%d]", ix);
             return ret;
         }
+
+
     }
 
+    /* set alignment parameters */
+    blks->align = align;
+    blks->offs  = offset;
     return MEMMGR_ERR_NONE;
 }
 
@@ -699,6 +736,12 @@ void *MemMgr_Alloc(MemAllocBlock blocks[], int num_blocks)
     /* allocate each buffer using tiler driver and initialize block info */
     for (ix = 0; ix < num_blocks; ix++)
     {
+        if (ix)
+        {
+            /* continue offset between pages */
+            blks[ix].align = PAGE_SIZE;
+            blks[ix].offs = blks[ix - 1].offs;
+        }
         CHK_I(blks[ix].ptr,==,NULL);
         if (NOT_I(tiler_alloc(blks + ix),==,0)) goto FAIL_ALLOC;
     }
@@ -791,6 +834,12 @@ void *MemMgr_Map(MemAllocBlock blocks[], int num_blocks)
     /* allocate each buffer using tiler driver */
     for (ix = 0; ix < num_blocks; ix++)
     {
+        if (ix)
+        {
+            /* continue offset between pages */
+            blks[ix].align = PAGE_SIZE;
+            blks[ix].offs = blks[ix - 1].offs;
+        }
         if (NOT_I(blks[ix].ptr,!=,NULL) ||
             NOT_I(tiler_map(blks + ix),==,0)) goto FAIL_MAP;
     }
