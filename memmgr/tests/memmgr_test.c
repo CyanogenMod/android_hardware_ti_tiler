@@ -51,12 +51,12 @@
     T(alloc_2D_test(64, 64, PIXEL_FMT_32BIT))\
     T(alloc_NV12_test(64, 64))\
     T(map_1D_test(4096, 0))\
-    T(alloc_1D_test(176 * 144 * 2, 512))\
+    T(alloc_1D_test(176 * 144 * 2, 0))\
     T(alloc_2D_test(176, 144, PIXEL_FMT_8BIT))\
     T(alloc_2D_test(176, 144, PIXEL_FMT_16BIT))\
     T(alloc_2D_test(176, 144, PIXEL_FMT_32BIT))\
     T(alloc_NV12_test(176, 144))\
-    T(map_1D_test(176 * 144 * 2, 2048))\
+    T(map_1D_test(176 * 144 * 2, 0))\
     T(alloc_1D_test(640 * 480 * 2, 0))\
     T(alloc_2D_test(640, 480, PIXEL_FMT_8BIT))\
     T(alloc_2D_test(640, 480, PIXEL_FMT_16BIT))\
