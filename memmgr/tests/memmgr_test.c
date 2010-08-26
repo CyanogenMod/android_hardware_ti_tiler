@@ -1025,6 +1025,7 @@ int maxmap_1D_test(bytes_t length, int max_maps)
             else
             {
                 FREE(buffer);
+                break;
             }
         }
     }
