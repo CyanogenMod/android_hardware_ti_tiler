@@ -14,10 +14,5 @@ automake=`find_tool automake`
 autoconf=`find_tool autoconf`
 autoheader=`find_tool autoheader`
 
-# don't want to make a separate package for testlib, but could not find a way
-# to include this source from another directory
-rm tests/testlib.c
-ln -s `pwd`/../utils/testlib.c tests/testlib.c
-
 mkdir -p config && $autoheader && $aclocal && $libtoolize --copy --force && $automake --copy --add-missing --foreign && $autoconf
 

@@ -70,6 +70,6 @@ fi
 MEMMGR_CFLAGS="-Werror -Wall -pipe -ansi"
 AC_SUBST(MEMMGR_CFLAGS)
 
-AC_CONFIG_FILES([libmemmgr.pc Makefile tests/Makefile])
+AC_CONFIG_FILES([libmemmgr.pc Makefile])
 AC_OUTPUT
 
