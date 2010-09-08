@@ -24,14 +24,22 @@ library_includedir=$(includedir)/memmgr
 # library sources
 lib_LTLIBRARIES= libmemmgr.la
 libmemmgr_la_SOURCES = $(h_sources) $(c_sources)
-# libmemmgr_la_LIBADD= sub/libsub.la
-# libmemmgr_la_LDFLAGS = -version-info $(GENERIC_LIBRARY_VERSION) -release $(GENERIC_RELEASE)
-libmemmgr_la_CFLAGS  = $(MEMMGR_CFLAGS) -fpic
+libmemmgr_la_CFLAGS  = $(MEMMGR_CFLAGS) -fpic -ansi
 libmemmgr_la_LIBTOOLFLAGS = --tag=disable-static
 libmemmgr_la_LDFLAGS = -version-info 0:0:0
 
 if UNIT_TESTS
-SUBDIRS = . tests
+bin_PROGRAMS = utils_test memmgr_test tiler_ptest
+
+utils_testdir = .
+utils_test_SOURCES = utils_test.c testlib.c
+
+memmgr_testdir = .
+memmgr_test_SOURCES = memmgr_test.c testlib.c
+memmgr_test_LDADD = libmemmgr.la
+
+tiler_ptest_SOURCES = tiler_ptest.c
+tiler_ptest_LDADD = libmemmgr.la
 endif
 
 pkgconfig_DATA = libmemmgr.pc
