@@ -26,7 +26,7 @@ lib_LTLIBRARIES= libmemmgr.la
 libmemmgr_la_SOURCES = $(h_sources) $(c_sources)
 libmemmgr_la_CFLAGS  = $(MEMMGR_CFLAGS) -fpic -ansi
 libmemmgr_la_LIBTOOLFLAGS = --tag=disable-static
-libmemmgr_la_LDFLAGS = -version-info 0:0:0
+libmemmgr_la_LDFLAGS = -version-info 2:0:0
 
 if UNIT_TESTS
 bin_PROGRAMS = utils_test memmgr_test tiler_ptest

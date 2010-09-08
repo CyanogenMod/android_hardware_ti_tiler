@@ -2,13 +2,13 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(memmgr, 1.00, http://www.ti.com)
+AC_INIT(memmgr, 2.00, http://www.ti.com)
 AC_CONFIG_SRCDIR([memmgr.c])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_SYSTEM
-AM_INIT_AUTOMAKE([memmgr], [1.00])
+AM_INIT_AUTOMAKE([memmgr], [2.00])
 LT_INIT
 
 # Checks for programs.
