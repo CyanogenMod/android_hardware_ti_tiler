@@ -1,20 +1,12 @@
-Requirements
+Validating MemMgr
 
-    Syslink userspace sources
-
-Build and install
-
-    See README.install.sh
-
-Validating MemMgr and D2C
-
-    MemMgr and D2C tests are not persistently enumerated, so the test # in
+    MemMgr tests are not persistently enumerated, so the test # in
     memmgr test may vary from release to release.
 
     You need to run the test with the "list" argument to list all the test
     descriptions and the corresponding test numbers.
 
-        E.g. "memmgr_test list", or "d2c_test list".
+        E.g. "memmgr_test list"
 
     If you have access to the official test report, the details column lists
     the test description (in the last line).  Match the test case description
@@ -24,37 +16,15 @@ Validating MemMgr and D2C
     in the official test report.  Some of the test cases may not be available,
     or may succeed even if the whole test failed/succeeded.
 
-    To run test case "Accessing MemMgr from different processes":
-
-        run "d2c_test ! 4"
-        wait until allocations happen, and press Ctrl-Z
-        run "memmgr_tes 1"
-        run "fg"
-        press Enter
-        Both tests run should pass.
-
-    To run test case "Accessing data from different processes":
-
-        run "d2c_test ! 4"
-        wait until allocations happen, and press Ctrl-Z
-        copy the 8 numbes printed by the test, e.g.
-            "60000000 90000 68002000 90000 70300000 90000 78080000 c000"
-        run "d2c_test = 176 144 " with the additional numbers pasted at the end
-            of the command
-        run "fg"
-        press Enter
-        Both tests run should pass.
-
     To ease the generation of the test report, a python script is provided that
     will populate most of the test report:
 
-        run memmgr_test and d2c_test, and pipe the output of the tests into a
+        run memmgr_test and pipe the output of the tests into a
         file, e.g.:
 
             memmgr_test > test.log
-            d2c_test >> test.log
 
-        open UTR and select Tiler/D2C User Space worksheet
+        open UTR and select Tiler User Space worksheet
         run this script by piping the test logs into the script, e.g. (you may
         have to copy the log file from the target to a location that you can
         access from the machine that has the UTR open.)
@@ -163,23 +133,4 @@ TEST # 95 - star_tiler_test(1000, 10)
 TEST # 96 - star_tiler_test(1000, 30)
 TEST # 97 - star_test(100, 10)
 TEST # 98 - star_test(1000, 10)
-
-d2c_test list
-
-TEST #  1 - test_d2c(176, 144, 1)
-TEST #  2 - test_d2c(176, 144, 2)
-TEST #  3 - test_d2c(176, 144, 3)
-TEST #  4 - test_d2c(176, 144, 4)
-TEST #  5 - test_d2c(640, 480, 1)
-TEST #  6 - test_d2c(640, 480, 2)
-TEST #  7 - test_d2c(640, 480, 3)
-TEST #  8 - test_d2c(640, 480, 4)
-TEST #  9 - test_d2c(848, 480, 1)
-TEST # 10 - test_d2c(848, 480, 2)
-TEST # 11 - test_d2c(848, 480, 3)
-TEST # 12 - test_d2c(848, 480, 4)
-TEST # 13 - test_d2c(1280, 720, 1)
-TEST # 14 - test_d2c(1280, 720, 2)
-TEST # 15 - test_d2c(1920, 1080, 1)
-TEST # 16 - test_d2c(1920, 1080, 2)
 
