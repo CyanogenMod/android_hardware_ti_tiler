@@ -3,11 +3,11 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: memmgr
-Description: TILER memory manager
+Name: ti-memmgr
+Description: TI memory manager
 Version: @VERSION@
 Requires:
-Libs: -L${libdir} -lmemmgr
-Cflags: -I${includedir}/memmgr
+Libs: -L${libdir} -ltimemmgr
+Cflags: -I${includedir}/timemmgr
 
 
