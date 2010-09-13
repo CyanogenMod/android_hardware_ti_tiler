@@ -19,6 +19,7 @@
 
 /* for bool definition */
 #include <stdbool.h>
+#include <stdint.h>
 
 /** ---------------------------------------------------------------------------
  * Type definitions
