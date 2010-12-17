@@ -3,7 +3,7 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: ti-memmgr
+Name: timemmgr
 Description: TI memory manager
 Version: @VERSION@
 Requires:
