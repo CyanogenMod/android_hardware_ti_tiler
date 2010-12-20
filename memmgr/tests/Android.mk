@@ -9,6 +9,7 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../../utils
 LOCAL_SHARED_LIBRARIES := libmemmgr
 LOCAL_MODULE := memmgr_test
+LOCAL_MODULE_TAGS := optional tests
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
@@ -20,6 +21,7 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../../utils
 LOCAL_SHARED_LIBRARIES := libmemmgr
 LOCAL_MODULE    := utils_test
+LOCAL_MODULE_TAGS := optional tests
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
@@ -31,5 +33,6 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../../utils
 LOCAL_SHARED_LIBRARIES := libmemmgr
 LOCAL_MODULE    := tiler_ptest
+LOCAL_MODULE_TAGS := optional tests
 include $(BUILD_EXECUTABLE)
 

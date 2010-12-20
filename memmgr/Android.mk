@@ -19,6 +19,7 @@ LOCAL_C_INCLUDES += \
 #-DOMAP_3430
 
 LOCAL_MODULE    := libmemmgr
+LOCAL_MODULE_TAGS := optional
 
 include $(BUILD_SHARED_LIBRARY)
 
