@@ -79,4 +79,3 @@ typedef uint32_t SSPtr;
 #define MEMMGR_ERR_GENERIC 1
 
 #endif
-

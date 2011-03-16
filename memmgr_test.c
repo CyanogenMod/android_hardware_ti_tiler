@@ -1689,4 +1689,3 @@ int main(int argc, char **argv)
     return TestLib_Run(argc, argv,
                        memmgr_identity_test, memmgr_identity_test, NULL);
 }
-

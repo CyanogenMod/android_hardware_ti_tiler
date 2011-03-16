@@ -61,13 +61,13 @@ export TILER_USERSPACE=`readlink -f ${DIR}`
 # =============================================================================
 
 #.. uncomment to include our unit tests as well
-# ENABLE_TESTS=--enable-tests
+ENABLE_TESTS=--enable-tests
 
 #.. uncomment to export the tilermgr.h header - this is currently needed by
 #   syslink
 # ENABLE_TILERMGR=--enable-tilermgr
 
-cd ${TILER_USERSPACE}/memmgr
+cd ${TILER_USERSPACE}
 ./bootstrap.sh
 ./configure --prefix ${PREFIX} --host ${HOST} ${ENABLE_TESTS} ${ENABLE_TILERMGR}
 make clean

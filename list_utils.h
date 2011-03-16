@@ -489,4 +489,3 @@
                                        DLIST_SAFE_RLOOP(head, pElem, pElem_safe)
 
 #endif
-

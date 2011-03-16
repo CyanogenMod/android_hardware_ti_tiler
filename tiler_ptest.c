@@ -707,4 +707,3 @@ int main(int argc, char **argv)
     P(res ? "FAILURE: %d" : "SUCCESS", res);
     return res;
 }
-

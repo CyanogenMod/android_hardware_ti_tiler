@@ -79,4 +79,3 @@ int TestLib_Run(int argc, char **argv, void(*init_fn)(void *),
                 void(*exit_fn)(void *), void *ptr);
 
 #endif
-

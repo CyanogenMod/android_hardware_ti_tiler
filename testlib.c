@@ -141,4 +141,3 @@ int TestLib_Run(int argc, char **argv, void(*init_fn)(void *),
 
     return failed;
 }
-
