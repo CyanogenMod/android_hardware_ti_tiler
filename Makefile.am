@@ -1,7 +1,5 @@
 AUTOMAKE_OPTIONS = foreign
 
-ACLOCAL_AMFLAGS=-I m4
-
 ## sources
 
 h_sources = memmgr.h tilermem.h mem_types.h tiler.h tilermem_utils.h
