@@ -201,7 +201,7 @@ static bytes_t def_bpp(pixel_fmt_t pixelFormat)
  */
 static bytes_t def_size(tiler_block_info *blk)
 {
-    return (blk->fmt == PIXEL_FMT_PAGE ?
+    return (blk->fmt == TILFMT_PAGE ?
             def_stride(blk->offs + blk->dim.len) :
             blk->dim.area.height * def_stride(blk->offs + blk->dim.area.width * def_bpp(blk->fmt)));
 }
@@ -616,7 +616,7 @@ static int check_block(tiler_block_info *blk, bool is_page_sized)
     if (blk->offs && blk->align && NOT_I(blk->offs,<,blk->align))
         return MEMMGR_ERR_GENERIC;
 
-    if (blk->fmt == PIXEL_FMT_PAGE)
+    if (blk->fmt == TILFMT_PAGE)
     {   /* check 1D buffers */
 
         /* length must be multiple of stride if stride > 0 */
