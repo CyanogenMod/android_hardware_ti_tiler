@@ -15,7 +15,7 @@ LOCAL_ARM_MODE := arm
 LOCAL_SRC_FILES := memmgr_test.c testlib.c
 LOCAL_SHARED_LIBRARIES := libtimemmgr
 LOCAL_MODULE := memmgr_test
-LOCAL_MODULE_TAGS := optional tests
+LOCAL_MODULE_TAGS := tests
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
@@ -23,7 +23,7 @@ LOCAL_ARM_MODE := arm
 LOCAL_SRC_FILES := utils_test.c testlib.c
 LOCAL_SHARED_LIBRARIES := libtimemmgr
 LOCAL_MODULE := utils_test
-LOCAL_MODULE_TAGS := optional tests
+LOCAL_MODULE_TAGS := tests
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
@@ -31,7 +31,7 @@ LOCAL_ARM_MODE := arm
 LOCAL_SRC_FILES := tiler_ptest.c
 LOCAL_SHARED_LIBRARIES := libtimemmgr
 LOCAL_MODULE    := tiler_ptest
-LOCAL_MODULE_TAGS:= optional tests
+LOCAL_MODULE_TAGS:= tests
 include $(BUILD_EXECUTABLE)
 
 endif
