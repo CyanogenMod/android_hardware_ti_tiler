@@ -94,5 +94,6 @@ struct tiler_buf_info {
 #define TILIOC_RBUF  _IOWR('z', 106, uint32_t)
 #define TILIOC_URBUF _IOWR('z', 107, uint32_t)
 #define TILIOC_QUERY_BLK _IOWR('z', 108, uint32_t)
+#define TILIOC_WAIT _IOWR('z', 109, uint32_t)
 
 #endif
