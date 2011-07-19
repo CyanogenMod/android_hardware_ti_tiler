@@ -8,6 +8,7 @@ LOCAL_ARM_MODE := arm
 LOCAL_SRC_FILES := memmgr.c tilermgr.c
 LOCAL_MODULE := libtimemmgr
 LOCAL_MODULE_TAGS := optional tests
+LOCAL_PRELINK_MODULE := false
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
